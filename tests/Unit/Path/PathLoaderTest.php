@@ -72,10 +72,10 @@ final class PathLoaderTest extends TestCase
     #[Test]
     public function itIgnoresSingleFileWithWrongExtension(): void
     {
-        $txtFile = self::FIXTURE_ROOT . '/readme.txt';
+        $txtFile = self::FIXTURE_ROOT . '/dummy.txt';
 
         if (!is_file($txtFile)) {
-            self::markTestSkipped('Fixture readme.txt not found.');
+            self::markTestSkipped('Fixture dummy.txt not found.');
         }
 
         $matcher = new PathMatcher([]);

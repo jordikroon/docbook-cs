@@ -55,7 +55,7 @@ final class SniffRunner
             $report->incrementFilesScanned();
 
             $changedLines = $diffLines !== null ? $this->getChangedLinesForFile($file, $diffLines) : [];
-            $fileReport = $processor->processFile($file, $changedLines);
+            $fileReport = $processor->processFile($file, $changedLines, $this->makeRelative($file));
 
             $violationCount = $fileReport->getViolationCount();
 
@@ -142,6 +142,21 @@ final class SniffRunner
         }
 
         return false;
+    }
+
+    private function makeRelative(string $absolutePath): string
+    {
+        $cwd = getcwd();
+        if ($cwd === false) {
+            return $absolutePath; // @codeCoverageIgnore
+        }
+        $prefix = rtrim(str_replace('\\', '/', $cwd), '/') . '/';
+        $normalized = str_replace('\\', '/', $absolutePath);
+        if (str_starts_with($normalized, $prefix)) {
+            return substr($normalized, strlen($prefix));
+        }
+        
+        return $absolutePath; // @codeCoverageIgnore
     }
 
     /**

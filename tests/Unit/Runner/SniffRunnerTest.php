@@ -133,6 +133,47 @@ final class SniffRunnerTest extends TestCase
     }
 
     #[Test]
+    public function itStoresRelativePathsInFileReports(): void
+    {
+        $sniff = new class implements SniffInterface {
+            public function getCode(): string
+            {
+                return 'Test.ViolatingSniff';
+            }
+
+            public function process(\DOMDocument $document, string $content, string $filePath): array
+            {
+                return [
+                    new Violation(
+                        sniffCode: 'Test.ViolatingSniff',
+                        filePath: $filePath,
+                        line: 1,
+                        message: 'Test violation',
+                        severity: Severity::WARNING,
+                    ),
+                ];
+            }
+
+            public function setProperty(string $name, string $value): void
+            {
+            }
+        };
+
+        $entry = new SniffEntry($sniff::class);
+        $config = $this->createConfig(sniffs: [$entry]);
+
+        $runner = new SniffRunner();
+        $report = $runner->run($config);
+
+        foreach ($report->getFileReports() as $fileReport) {
+            self::assertFalse(
+                str_starts_with($fileReport->filePath, '/'),
+                'Expected relative path, got: ' . $fileReport->filePath,
+            );
+        }
+    }
+
+    #[Test]
     public function itPassesPropertiesToSniffs(): void
     {
         $sniffClass = new class implements SniffInterface {
@@ -197,10 +238,7 @@ final class SniffRunnerTest extends TestCase
         $config = $this->createConfig();
         $runner = new SniffRunner();
 
-        // Use the suffix-matching strategy: "sniff_runner/default/file_a.xml"
-        // matches the absolute fixture path via str_ends_with.
         $diffLines = ['sniff_runner/default/file_a.xml' => [1]];
-
         $report = $runner->run($config, null, $diffLines);
 
         self::assertSame(1, $report->getFilesScanned());
@@ -213,7 +251,6 @@ final class SniffRunnerTest extends TestCase
         $runner = new SniffRunner();
 
         $diffLines = ['completely/different/file.xml' => [1, 2, 3]];
-
         $report = $runner->run($config, null, $diffLines);
 
         self::assertSame(0, $report->getFilesScanned());
@@ -225,12 +262,9 @@ final class SniffRunnerTest extends TestCase
         $config = $this->createConfig();
         $runner = new SniffRunner();
 
-        // Use the same unresolved path string that PathLoader will produce
-        // (RecursiveDirectoryIterator preserves ".." in paths).
         $discoveredPath = self::FIXTURE_DIR . '/file_a.xml';
 
         $diffLines = [$discoveredPath => [1]];
-
         $report = $runner->run($config, null, $diffLines);
 
         self::assertSame(1, $report->getFilesScanned());
@@ -242,7 +276,6 @@ final class SniffRunnerTest extends TestCase
         $config = $this->createConfig();
         $runner = new SniffRunner();
 
-        // Without a diff all files in the configured paths are scanned.
         $report = $runner->run($config);
 
         self::assertSame(2, $report->getFilesScanned());

@@ -29,15 +29,16 @@ final class XmlFileProcessor
     }
 
     /** @param list<int> $changedLines */
-    public function processFile(string $filePath, array $changedLines = []): FileReport
+    public function processFile(string $filePath, array $changedLines = [], string $reportPath = ''): FileReport
     {
-        $fileReport = new FileReport($filePath);
+        $effectivePath = $reportPath !== '' ? $reportPath : $filePath;
+        $fileReport = new FileReport($effectivePath);
 
         $content = @file_get_contents($filePath);
         if ($content === false) {
             $fileReport->addViolation(new Violation(
                 sniffCode: 'DocbookCS.Internal',
-                filePath: $filePath,
+                filePath: $effectivePath,
                 line: 0,
                 message: 'Could not read file.',
                 severity: Severity::ERROR,
@@ -45,7 +46,7 @@ final class XmlFileProcessor
             return $fileReport;
         }
 
-        return $this->processContent($content, $filePath, $fileReport, $changedLines);
+        return $this->processContent($content, $effectivePath, $fileReport, $changedLines);
     }
 
     /** @param list<int> $changedLines */

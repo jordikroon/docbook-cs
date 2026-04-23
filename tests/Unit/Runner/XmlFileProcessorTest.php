@@ -49,6 +49,16 @@ final class XmlFileProcessorTest extends TestCase
     }
 
     #[Test]
+    public function itUsesReportPathInsteadOfFilePathWhenProvided(): void
+    {
+        $processor = new XmlFileProcessor([]);
+
+        $fileReport = $processor->processFile('/nonexistent/path/file.xml', [], 'relative/file.xml');
+
+        self::assertSame('relative/file.xml', $fileReport->filePath);
+    }
+
+    #[Test]
     public function itParsesCleanXmlWithNoViolations(): void
     {
         $processor = new XmlFileProcessor([]);

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<docbookcs>
+	<sniffs>
+		<sniff class="DocbookCS\Sniff\ExceptionNameSniff"/>
+	</sniffs>
+	<paths>
+		<include>.</include>
+	</paths>
+</docbookcs>

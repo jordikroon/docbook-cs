@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<docbookcs>
+	<sniffs>
+		<sniff class="DocbookCS\Sniffs\ParaToSimparaSniff" />
+		<sniff class="DocbookCS\Sniffs\IdNamingSniff">
+			<property name="pattern" value="^[a-z][a-z0-9\-\.]+$" />
+		</sniff>
+	</sniffs>
+
+	<paths>
+		<path>reference/</path>
+		<path>language/</path>
+	</paths>
+
+	<exclude>
+		<pattern>*/skeleton.xml</pattern>
+		<pattern>reference/*/versions.xml</pattern>
+	</exclude>
+
+	<entities>
+		<directory>../doc-base/entities/</directory>
+	</entities>
+</docbookcs>

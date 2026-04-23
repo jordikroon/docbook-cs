@@ -1,0 +1,25 @@
+includes:
+  - vendor/phpstan/phpstan-phpunit/extension.neon
+
+parameters:
+  level: max
+
+  paths:
+    - src/
+    - tests/
+
+  tmpDir: .phpstan.cache
+
+  treatPhpDocTypesAsCertain: false
+
+  exceptions:
+    check:
+      missingCheckedExceptionInThrows: true
+      tooWideThrowType: true
+
+  ignoreErrors:
+    -
+      identifier: missingType.checkedException
+      reportUnmatched: false
+      paths:
+        - tests/

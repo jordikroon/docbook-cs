@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<docbookcs>
+    <sniffs>
+        <sniff class="DocbookCS\Sniff\SimparaSniff">
+            <!-- Optionally add extra block elements that your project uses -->
+            <!-- <property name="additionalBlockElements" value="custom-block" /> -->
+        </sniff>
+
+        <sniff class="DocbookCS\Sniff\ExceptionNameSniff">
+            <!-- Optionally add extra suffixes or exact names -->
+            <!-- <property name="additionalSuffixes" value="Fault" /> -->
+            <!-- <property name="additionalExactNames" value="PDOException" /> -->
+        </sniff>
+
+        <sniff class="DocbookCS\Sniff\AttributeOrderSniff" />
+    </sniffs>
+
+    <paths>
+        <path>reference</path>
+        <path>language</path>
+    </paths>
+
+    <exclude>
+        <pattern>*/skeleton.xml</pattern>
+        <pattern>*/.git/*</pattern>
+    </exclude>
+
+    <entities>
+        <directory>../doc-base/entities</directory>
+        <file>entities/global.ent</file>
+    </entities>
+</docbookcs>

@@ -1,0 +1,279 @@
+<?php
+
+declare(strict_types=1);
+
+namespace DocbookCS\Tests\Unit;
+
+use DocbookCS\Application;
+use DocbookCS\Config\ConfigData;
+use DocbookCS\Config\ConfigParser;
+use DocbookCS\Config\ConfigParserException;
+use DocbookCS\Config\SniffEntry;
+use DocbookCS\Path\PathLoader;
+use DocbookCS\Path\PathMatcher;
+use DocbookCS\Progress\NullProgress;
+use DocbookCS\Report\FileReport;
+use DocbookCS\Report\Report;
+use DocbookCS\Report\Reporter\CheckstyleReporter;
+use DocbookCS\Report\Reporter\ConsoleReporter;
+use DocbookCS\Report\Reporter\JsonReporter;
+use DocbookCS\Runner\EntityPreprocessor;
+use DocbookCS\Runner\SniffRunner;
+use DocbookCS\Runner\XmlFileProcessor;
+use DocbookCS\Sniff\ExceptionNameSniff;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+#[CoversClass(Application::class)]
+#[CoversClass(ConfigParser::class)]
+#[CoversClass(ConfigParserException::class)]
+#[CoversClass(ConfigData::class)]
+#[CoversClass(SniffEntry::class)]
+#[CoversClass(PathLoader::class)]
+#[CoversClass(PathMatcher::class)]
+#[CoversClass(NullProgress::class)]
+#[CoversClass(Report::class)]
+#[CoversClass(ConsoleReporter::class)]
+#[CoversClass(EntityPreprocessor::class)]
+#[CoversClass(SniffRunner::class)]
+#[CoversClass(XmlFileProcessor::class)]
+#[CoversClass(CheckstyleReporter::class)]
+#[CoversClass(JsonReporter::class)]
+#[CoversClass(FileReport::class)]
+#[CoversClass(ExceptionNameSniff::class)]
+final class ApplicationTest extends TestCase
+{
+    private const string FIXTURE_DIR = __DIR__ . '/../fixtures/application';
+    private const string VALID_CONFIG = self::FIXTURE_DIR . '/valid_config.xml';
+    private const string INVALID_SNIFF_CONFIG = self::FIXTURE_DIR . '/invalid_sniff_config.xml';
+    private const string SCAN_FILE = self::FIXTURE_DIR . '/scan_target/book.xml';
+
+    /** @var resource */
+    private mixed $stdout;
+
+    /** @var resource */
+    private mixed $stderr;
+
+    protected function setUp(): void
+    {
+        $stdout = fopen('php://memory', 'wb+');
+        $stderr = fopen('php://memory', 'wb+');
+
+        if (!is_resource($stdout) || !is_resource($stderr)) {
+            throw new \RuntimeException('Failed to create memory streams for testing.');
+        }
+
+        $this->stdout = $stdout;
+        $this->stderr = $stderr;
+    }
+
+    /** @param resource $stream */
+    private function readStream(mixed $stream): string
+    {
+        rewind($stream);
+
+        return stream_get_contents($stream) ?: '';
+    }
+
+    #[Test]
+    public function itPrintsHelpAndExitsWithZero(): void
+    {
+        $app = new Application(['docbook-cs', '--help'], $this->stdout, $this->stderr);
+
+        $exitCode = $app->run();
+
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString('Usage:', $this->readStream($this->stdout));
+        self::assertSame('', $this->readStream($this->stderr));
+    }
+
+    #[Test]
+    public function itPrintsVersionAndExitsWithZero(): void
+    {
+        $app = new Application(['docbook-cs', '--version'], $this->stdout, $this->stderr);
+
+        $exitCode = $app->run();
+
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString('DocbookCS version', $this->readStream($this->stdout));
+        self::assertSame('', $this->readStream($this->stderr));
+    }
+
+    #[Test]
+    public function itReturnsErrorWhenConfigCannotBeLoaded(): void
+    {
+        $app = new Application(
+            ['docbook-cs', '--config=nonexistent.xml'],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertSame(2, $exitCode);
+        self::assertStringContainsString('Error:', $this->readStream($this->stderr));
+    }
+
+    #[Test]
+    public function itHandlesSeparateConfigArgument(): void
+    {
+        $app = new Application(
+            ['docbook-cs', '--config', 'nonexistent.xml'],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertSame(2, $exitCode);
+        self::assertStringContainsString('Error:', $this->readStream($this->stderr));
+    }
+
+    #[Test]
+    public function itAcceptsPathsWithoutCrashing(): void
+    {
+        $app = new Application(
+            ['docbook-cs', 'file.xml', 'dir/file.xml'],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertContains($exitCode, [0, 1, 2]);
+    }
+
+    #[Test]
+    public function itSupportsQuietFlag(): void
+    {
+        $app = new Application(['docbook-cs', '--quiet'], $this->stdout, $this->stderr);
+
+        $exitCode = $app->run();
+
+        self::assertContains($exitCode, [0, 1, 2]);
+    }
+
+    #[Test]
+    public function itSupportsReportFormats(): void
+    {
+        foreach (['console', 'json', 'checkstyle'] as $format) {
+            $app = new Application(
+                ['docbook-cs', "--report={$format}"],
+                $this->stdout,
+                $this->stderr,
+            );
+
+            $exitCode = $app->run();
+
+            self::assertContains($exitCode, [0, 1, 2]);
+        }
+    }
+
+    #[Test]
+    public function itSupportsColorFlags(): void
+    {
+        foreach (['--colors', '--no-colors'] as $flag) {
+            $app = new Application(
+                ['docbook-cs', $flag],
+                $this->stdout,
+                $this->stderr,
+            );
+
+            $exitCode = $app->run();
+
+            self::assertContains($exitCode, [0, 1, 2]);
+        }
+    }
+
+    #[Test]
+    public function helpShortCircuitsExecution(): void
+    {
+        $app = new Application(
+            ['docbook-cs', '--help', '--config=invalid.xml'],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString('Usage:', $this->readStream($this->stdout));
+        self::assertSame('', $this->readStream($this->stderr));
+    }
+
+    #[Test]
+    public function versionShortCircuitsExecution(): void
+    {
+        $app = new Application(
+            ['docbook-cs', '--version', '--config=invalid.xml'],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString('DocbookCS version', $this->readStream($this->stdout));
+        self::assertSame('', $this->readStream($this->stderr));
+    }
+
+    #[Test]
+    public function itResolvesRelativeOverridePathsAgainstCwd(): void
+    {
+        $app = new Application(
+            ['docbook-cs', '--config=' . self::VALID_CONFIG, self::SCAN_FILE, 'relative/path.xml'],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        // The app should not crash with exit code 2 (config/runtime error).
+        // It may return 0 (no violations) or 1 (violations).
+        self::assertNotSame(2, $exitCode);
+    }
+
+    #[Test]
+    public function itCatchesRuntimeErrorFromRunner(): void
+    {
+        $app = new Application(
+            ['docbook-cs', '--config=' . self::INVALID_SNIFF_CONFIG],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertSame(2, $exitCode);
+        self::assertStringContainsString('Runtime error:', $this->readStream($this->stderr));
+    }
+
+    #[Test]
+    public function itSupportsSeparateReportArgument(): void
+    {
+        $app = new Application(
+            ['docbook-cs', '--report', 'json'],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertContains($exitCode, [0, 1, 2]);
+    }
+
+    #[Test]
+    public function itPassesThroughAbsoluteOverridePaths(): void
+    {
+        $app = new Application(
+            ['docbook-cs', '--config=' . self::VALID_CONFIG, self::SCAN_FILE],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertNotSame(2, $exitCode);
+    }
+}

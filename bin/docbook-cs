@@ -1,0 +1,28 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use DocbookCS\Application;
+
+// Find the Composer autoloader.
+(static function (): void {
+    $candidates = [
+        __DIR__ . '/../vendor/autoload.php', // installed as project root
+        __DIR__ . '/../../../autoload.php',  // installed as a dependency
+    ];
+
+    foreach ($candidates as $file) {
+        if (!is_file($file)) {
+          continue;
+        }
+
+        require $file;
+        return;
+    }
+
+    fwrite(STDERR, 'Could not find Composer autoloader. Run "composer install" first.' . PHP_EOL);
+    exit(2);
+})();
+
+new Application($argv ?? [])->run();

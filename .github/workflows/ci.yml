@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  pull-requests: write
+
 jobs:
   cs:
     name: Code Style
@@ -72,7 +75,7 @@ jobs:
           check_name: 'PHPUnit Test Results'
 
       - name: Post coverage summary
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         if: github.event_name == 'pull_request'
         with:
           header: coverage

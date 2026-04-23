@@ -190,4 +190,61 @@ final class SniffRunnerTest extends TestCase
 
         $runner->run($config);
     }
+
+    #[Test]
+    public function itFiltersFilesToOnlyThoseInTheDiff(): void
+    {
+        $config = $this->createConfig();
+        $runner = new SniffRunner();
+
+        // Use the suffix-matching strategy: "sniff_runner/default/file_a.xml"
+        // matches the absolute fixture path via str_ends_with.
+        $diffLines = ['sniff_runner/default/file_a.xml' => [1]];
+
+        $report = $runner->run($config, null, $diffLines);
+
+        self::assertSame(1, $report->getFilesScanned());
+    }
+
+    #[Test]
+    public function itScansNoFilesWhenDiffContainsNoMatchingPaths(): void
+    {
+        $config = $this->createConfig();
+        $runner = new SniffRunner();
+
+        $diffLines = ['completely/different/file.xml' => [1, 2, 3]];
+
+        $report = $runner->run($config, null, $diffLines);
+
+        self::assertSame(0, $report->getFilesScanned());
+    }
+
+    #[Test]
+    public function itMatchesWhenDiffPathEqualsDiscoveredPath(): void
+    {
+        $config = $this->createConfig();
+        $runner = new SniffRunner();
+
+        // Use the same unresolved path string that PathLoader will produce
+        // (RecursiveDirectoryIterator preserves ".." in paths).
+        $discoveredPath = self::FIXTURE_DIR . '/file_a.xml';
+
+        $diffLines = [$discoveredPath => [1]];
+
+        $report = $runner->run($config, null, $diffLines);
+
+        self::assertSame(1, $report->getFilesScanned());
+    }
+
+    #[Test]
+    public function itScansAllFilesWhenNoDiffIsGiven(): void
+    {
+        $config = $this->createConfig();
+        $runner = new SniffRunner();
+
+        // Without a diff all files in the configured paths are scanned.
+        $report = $runner->run($config);
+
+        self::assertSame(2, $report->getFilesScanned());
+    }
 }

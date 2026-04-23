@@ -7,6 +7,7 @@ namespace DocbookCS;
 use DocbookCS\Config\ConfigData;
 use DocbookCS\Config\ConfigParser;
 use DocbookCS\Config\ConfigParserException;
+use DocbookCS\Diff\DiffParser;
 use DocbookCS\Progress\ConsoleProgress;
 use DocbookCS\Progress\NullProgress;
 use DocbookCS\Progress\ProgressInterface;
@@ -31,16 +32,21 @@ final class Application
     /** @var resource */
     private $stderr;
 
+    /** @var resource */
+    private $stdin;
+
     /**
      * @param list<string> $argv
      * @param ?resource $stdout
      * @param ?resource $stderr
+     * @param ?resource $stdin
      */
-    public function __construct(array $argv, mixed $stdout = null, mixed $stderr = null)
+    public function __construct(array $argv, mixed $stdout = null, mixed $stderr = null, mixed $stdin = null)
     {
         $this->argv = $argv;
         $this->stdout = $stdout ?? STDOUT;
         $this->stderr = $stderr ?? STDERR;
+        $this->stdin = $stdin ?? STDIN;
     }
 
     /**
@@ -77,11 +83,24 @@ final class Application
             $overridePaths = $this->resolveOverridePaths($overridePaths);
         }
 
+        $diffLines = null;
+
+        if ($options['diff'] !== null) {
+            try {
+                $diffContent = $this->readDiff($options['diff']);
+                $diffLines = (new DiffParser())->parse($diffContent);
+            } catch (\Throwable $e) {
+                $this->writeError('Error reading diff: ' . $e->getMessage() . PHP_EOL);
+
+                return 2;
+            }
+        }
+
         $progress = $this->createProgress($options);
 
         try {
             $runner = new SniffRunner($progress);
-            $report = $runner->run($config, $overridePaths);
+            $report = $runner->run($config, $overridePaths, $diffLines);
         } catch (\Throwable $e) {
             $this->writeError('Runtime error: ' . $e->getMessage() . PHP_EOL);
 
@@ -124,6 +143,7 @@ final class Application
      *     colors: bool,
      *     quiet: bool,
      *     paths: list<string>,
+     *     diff: string|null,
      * }
      */
     private function parseArgv(): array
@@ -136,6 +156,7 @@ final class Application
             'colors' => $this->detectColorSupport(),
             'quiet' => false,
             'paths' => [],
+            'diff' => null,
         ];
 
         $args = array_slice($this->argv, 1); // skip script name
@@ -199,6 +220,21 @@ final class Application
                 continue;
             }
 
+            // --diff        = read from stdin
+            // --diff=FILE   = read from file
+            // --diff=-      = read from stdin (explicit)
+            if ($arg === '--diff') {
+                $result['diff'] = '';
+                $i++;
+                continue;
+            }
+
+            if (str_starts_with($arg, '--diff=')) {
+                $result['diff'] = substr($arg, 7);
+                $i++;
+                continue;
+            }
+
             // Anything else is a path to scan.
             if (!str_starts_with($arg, '-')) {
                 $result['paths'][] = $arg;
@@ -208,6 +244,25 @@ final class Application
         }
 
         return $result;
+    }
+
+    /** @throws \RuntimeException if the source cannot be read. */
+    private function readDiff(string $source): string
+    {
+        if ($source === '' || $source === '-') {
+            $content = stream_get_contents($this->stdin);
+            if ($content === false) {
+                throw new \RuntimeException('Could not read diff from stdin.'); // @codeCoverageIgnore
+            }
+            return $content;
+        }
+
+        $content = @file_get_contents($source);
+        if ($content === false) {
+            throw new \RuntimeException(sprintf('Could not read diff file: %s', $source));
+        }
+
+        return $content;
     }
 
     /** @param array{report: string, quiet: bool, colors: bool} $options */
@@ -314,6 +369,10 @@ Options:
   --report=<format>     Output format: console (default), checkstyle, json.
   --colors              Force ANSI color output.
   --no-colors           Disable ANSI color output.
+  --diff[=<file>]       Restrict analysis to files changed in a unified diff.
+                        Omit the value or pass "-" to read the diff from stdin.
+                        Violations are only reported when the violating element
+                        is on or contains a changed line (parent-context aware).
 
 Arguments:
   <file-or-directory>   One or more files or directories to scan.
@@ -324,6 +383,8 @@ Examples:
   docbook-cs --config=myconfig.xml reference/
   docbook-cs --report=checkstyle --no-colors > report.xml
   docbook-cs reference/strings/functions/strlen.xml
+  git diff HEAD | docbook-cs --diff --report=checkstyle
+  docbook-cs --diff=changes.patch --report=json
 
 HELP;
 

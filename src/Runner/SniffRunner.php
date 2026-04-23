@@ -24,10 +24,11 @@ final class SniffRunner
 
     /**
      * @param list<string>|null $overridePaths
+     * @param array<string, list<int>>|null $diffLines
      * @throws \RuntimeException if a sniff class cannot be found or does not implement SniffInterface.
      * @throws \UnexpectedValueException if no files are found to scan.
      */
-    public function run(ConfigData $config, ?array $overridePaths = null): Report
+    public function run(ConfigData $config, ?array $overridePaths = null, ?array $diffLines = null): Report
     {
         $sniffs = $this->instantiateSniffs($config->getSniffs());
 
@@ -37,6 +38,10 @@ final class SniffRunner
 
         $pathLoader = new PathLoader($includePaths, $matcher);
         $files = $pathLoader->loadPaths();
+
+        if ($diffLines !== null) {
+            $files = $this->filterByDiff($files, array_keys($diffLines));
+        }
 
         $preprocessor = new EntityPreprocessor();
         $processor = new XmlFileProcessor($sniffs, $preprocessor);
@@ -48,7 +53,9 @@ final class SniffRunner
 
         foreach ($files as $index => $file) {
             $report->incrementFilesScanned();
-            $fileReport = $processor->processFile($file);
+
+            $changedLines = $diffLines !== null ? $this->getChangedLinesForFile($file, $diffLines) : [];
+            $fileReport = $processor->processFile($file, $changedLines);
 
             $violationCount = $fileReport->getViolationCount();
 
@@ -101,5 +108,61 @@ final class SniffRunner
         }
 
         return $sniffs;
+    }
+
+    /**
+     * @param list<string> $files
+     * @param list<string> $diffPaths
+     * @return list<string>
+     */
+    private function filterByDiff(array $files, array $diffPaths): array
+    {
+        return array_values(
+            array_filter(
+                $files,
+                fn(string $file) => $this->matchesDiffPath($file, $diffPaths),
+            )
+        );
+    }
+
+    /** @param list<string> $diffPaths */
+    private function matchesDiffPath(string $absolutePath, array $diffPaths): bool
+    {
+        $normalized = str_replace('\\', '/', $absolutePath);
+
+        foreach ($diffPaths as $diffPath) {
+            $normalizedDiff = str_replace('\\', '/', $diffPath);
+
+            if (
+                $normalized === $normalizedDiff
+                || str_ends_with($normalized, '/' . ltrim($normalizedDiff, '/'))
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, list<int>> $diffLines
+     * @return list<int>
+     */
+    private function getChangedLinesForFile(string $absolutePath, array $diffLines): array
+    {
+        $normalized = str_replace('\\', '/', $absolutePath);
+
+        foreach ($diffLines as $diffPath => $lines) {
+            $normalizedDiff = str_replace('\\', '/', $diffPath);
+
+            if (
+                $normalized === $normalizedDiff
+                || str_ends_with($normalized, '/' . ltrim($normalizedDiff, '/'))
+            ) {
+                return $lines;
+            }
+        }
+
+        return []; // @codeCoverageIgnore
     }
 }

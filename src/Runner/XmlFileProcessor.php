@@ -17,8 +17,8 @@ final class XmlFileProcessor
     private EntityPreprocessor $preprocessor;
 
     /**
-     * @param list<SniffInterface>      $sniffs
-     * @param EntityPreprocessor|null   $preprocessor
+     * @param list<SniffInterface> $sniffs
+     * @param EntityPreprocessor|null $preprocessor
      */
     public function __construct(
         array $sniffs,
@@ -28,7 +28,8 @@ final class XmlFileProcessor
         $this->preprocessor = $preprocessor ?? new EntityPreprocessor();
     }
 
-    public function processFile(string $filePath): FileReport
+    /** @param list<int> $changedLines */
+    public function processFile(string $filePath, array $changedLines = []): FileReport
     {
         $fileReport = new FileReport($filePath);
 
@@ -44,18 +45,27 @@ final class XmlFileProcessor
             return $fileReport;
         }
 
-        return $this->processContent($content, $filePath, $fileReport);
+        return $this->processContent($content, $filePath, $fileReport, $changedLines);
     }
 
-    public function processString(string $xmlContent, string $pseudoPath = 'input.xml'): FileReport
-    {
+    /** @param list<int> $changedLines */
+    public function processString(
+        string $xmlContent,
+        string $pseudoPath = 'input.xml',
+        array $changedLines = [],
+    ): FileReport {
         $fileReport = new FileReport($pseudoPath);
 
-        return $this->processContent($xmlContent, $pseudoPath, $fileReport);
+        return $this->processContent($xmlContent, $pseudoPath, $fileReport, $changedLines);
     }
 
-    private function processContent(string $content, string $filePath, FileReport $fileReport): FileReport
-    {
+    /** @param list<int> $changedLines */
+    private function processContent(
+        string $content,
+        string $filePath,
+        FileReport $fileReport,
+        array $changedLines = [],
+    ): FileReport {
         $content = $this->preprocessor->process($content);
 
         $document = $this->parseXml($content, $filePath, $fileReport);
@@ -63,10 +73,19 @@ final class XmlFileProcessor
             return $fileReport;
         }
 
+        $violations = [];
         foreach ($this->sniffs as $sniff) {
             foreach ($sniff->process($document, $content, $filePath) as $violation) {
-                $fileReport->addViolation($violation);
+                $violations[] = $violation;
             }
+        }
+
+        if ($changedLines !== []) {
+            $violations = $this->filterRelevantViolations($violations, $document, $changedLines);
+        }
+
+        foreach ($violations as $violation) {
+            $fileReport->addViolation($violation);
         }
 
         return $fileReport;
@@ -102,5 +121,80 @@ final class XmlFileProcessor
         }
 
         return $document;
+    }
+
+    /**
+     * @param list<Violation> $violations
+     * @param list<int> $changedLines
+     * @return list<Violation>
+     */
+    private function filterRelevantViolations(array $violations, \DOMDocument $document, array $changedLines): array
+    {
+        /** @var array<int, int> $changedSet */
+        $changedSet = array_flip($changedLines);
+
+        return array_values(array_filter(
+            $violations,
+            fn(Violation $v) => $this->isViolationRelevant($v, $document, $changedLines, $changedSet),
+        ));
+    }
+
+    /**
+     * @param list<int> $changedLines
+     * @param array<int, int> $changedSet
+     */
+    private function isViolationRelevant(
+        Violation $violation,
+        \DOMDocument $document,
+        array $changedLines,
+        array $changedSet,
+    ): bool {
+        if (isset($changedSet[$violation->line])) {
+            return true;
+        }
+
+        // Find the element whose opening tag is on the violation line and check
+        // whether any changed line falls inside its content span.
+        foreach ($document->getElementsByTagName('*') as $element) {
+            if ($element->getLineNo() !== $violation->line) {
+                continue;
+            }
+
+            $endLine = $this->computeElementEndLine($element);
+
+            if (
+                array_any(
+                    $changedLines,
+                    static fn($changed) => $changed >= $violation->line && $changed <= $endLine
+                )
+            ) {
+                return true;
+            }
+
+            break;
+        }
+
+        return false;
+    }
+
+    private function computeElementEndLine(\DOMElement $element): int
+    {
+        $max = $element->getLineNo();
+
+        foreach ($element->childNodes as $child) {
+            $line = $child->getLineNo();
+            if ($line > $max) {
+                $max = $line;
+            }
+
+            if ($child instanceof \DOMElement) {
+                $childEnd = $this->computeElementEndLine($child);
+                if ($childEnd > $max) {
+                    $max = $childEnd;
+                }
+            }
+        }
+
+        return $max;
     }
 }

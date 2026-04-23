@@ -1,6 +1,6 @@
 # DocbookCS
 
-A static-analysis linter for DocBook XML files, modelled after PHP_CodeSniffer. It scans XML documentation sources and reports style and convention violations.
+A static-analysis linter for DocBook XML files. It scans XML documentation sources and reports style and convention violations.
 
 ## Requirements
 

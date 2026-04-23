@@ -1,9 +1,9 @@
 {
   "name": "jordikroon/docbookcs",
-  "description": "A command-line tool to convert DocBook XML files to HTML and PDF formats.",
+  "description": "A static-analysis linter for DocBook XML files",
   "type": "library",
   "license": "Apache-2.0",
-  "bin": ["bin/docbookcs"],
+  "bin": ["bin/docbook-cs"],
   "require": {
     "php": "^8.5",
     "ext-dom": "*",

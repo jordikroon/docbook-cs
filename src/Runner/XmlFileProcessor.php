@@ -28,9 +28,7 @@ final class XmlFileProcessor
         $this->preprocessor = $preprocessor ?? new EntityPreprocessor();
     }
 
-    /**
-     * @param list<int> $changedLines
-     */
+    /** @param list<int> $changedLines */
     public function processFile(string $filePath, array $changedLines = []): FileReport
     {
         $fileReport = new FileReport($filePath);
@@ -50,9 +48,7 @@ final class XmlFileProcessor
         return $this->processContent($content, $filePath, $fileReport, $changedLines);
     }
 
-    /**
-     * @param list<int> $changedLines
-     */
+    /** @param list<int> $changedLines */
     public function processString(
         string $xmlContent,
         string $pseudoPath = 'input.xml',

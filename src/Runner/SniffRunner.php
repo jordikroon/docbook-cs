@@ -155,7 +155,7 @@ final class SniffRunner
         if (str_starts_with($normalized, $prefix)) {
             return substr($normalized, strlen($prefix));
         }
-        
+
         return $absolutePath; // @codeCoverageIgnore
     }
 

@@ -210,16 +210,7 @@ final class Application
         return $result;
     }
 
-    /**
-     * Decide which progress implementation to use.
-     *
-     * Progress is shown only when ALL of these are true:
-     *  - The report format is "console" (structured formats go to stdout).
-     *  - The user did not pass --quiet.
-     *  - stderr is a TTY (so we are not piping).
-     *
-     * @param array{report: string, quiet: bool, colors: bool} $options
-     */
+    /** @param array{report: string, quiet: bool, colors: bool} $options */
     private function createProgress(array $options): ProgressInterface
     {
         if ($options['quiet']) {

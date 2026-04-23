@@ -306,5 +306,4 @@ XML;
 
         self::assertSame(0, $fileReport->getViolationCount());
     }
-
 }

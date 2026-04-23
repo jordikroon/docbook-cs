@@ -166,9 +166,11 @@ final class XmlFileProcessor
 
             $endLine = $this->computeElementEndLine($element);
 
-            if (array_any(
-                $changedLines,
-                static fn($changed) => $changed >= $violation->line && $changed <= $endLine)
+            if (
+                array_any(
+                    $changedLines,
+                    static fn($changed) => $changed >= $violation->line && $changed <= $endLine
+                )
             ) {
                 return true;
             }

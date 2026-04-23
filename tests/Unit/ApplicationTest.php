@@ -424,5 +424,4 @@ DIFF);
             self::assertSame('', $this->readStream($stderr), "stderr should be empty for --report={$format}");
         }
     }
-
 }

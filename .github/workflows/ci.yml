@@ -64,8 +64,17 @@ jobs:
 
       - run: mkdir -p .phpunit.cache
 
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-text=.phpunit.cache/coverage.txt
+      - name: Run PHPUnit (console)
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist --colors=always
+
+      - name: Generate coverage summary
+        run: |
+          echo '```' > .phpunit.cache/coverage.txt
+          vendor/bin/phpunit \
+            --configuration phpunit.xml.dist \
+            --colors=never \
+            --coverage-text >> .phpunit.cache/coverage.txt
+          echo '```' >> .phpunit.cache/coverage.txt
 
       - name: Report test results
         uses: mikepenz/action-junit-report@v4

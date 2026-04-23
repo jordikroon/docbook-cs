@@ -1,5 +1,5 @@
 {
-  "name": "jordikroon/docbookcs",
+  "name": "jordikroon/docbook-cs",
   "description": "A static-analysis linter for DocBook XML files",
   "type": "library",
   "license": "Apache-2.0",

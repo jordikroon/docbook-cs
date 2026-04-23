@@ -2,7 +2,7 @@
   "name": "jordikroon/docbookcs",
   "description": "A command-line tool to convert DocBook XML files to HTML and PDF formats.",
   "type": "library",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bin": ["bin/docbookcs"],
   "require": {
     "php": "^8.5",

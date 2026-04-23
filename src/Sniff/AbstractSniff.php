@@ -22,18 +22,20 @@ abstract class AbstractSniff implements SniffInterface
         return $this->properties[$name] ?? $default;
     }
 
+    /** @throws \LogicException if an invalid severity level is configured */
     protected function createViolation(
         string $filePath,
         int $line,
         string $message,
-        Severity $severity = Severity::WARNING,
+        Severity $severity = Severity::ERROR,
     ): Violation {
         return new Violation(
             sniffCode: $this->getCode(),
             filePath: $filePath,
             line: $line,
             message: $message,
-            severity: $severity,
+            severity: Severity::tryFrom($this->getProperty('severity', $severity->value))
+                ?: throw new \LogicException('Invalid severity level configured for ExceptionNameSniff.'),
         );
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace DocbookCS\Sniff;
 
+use DocbookCS\Report\Severity;
+
 /**
  * Detects exception/error class names wrapped in <classname> that
  * should use <exceptionname> instead.
@@ -28,6 +30,7 @@ final class ExceptionNameSniff extends AbstractSniff
         return 'DocbookCS.ExceptionName';
     }
 
+    /** @throws \LogicException if an invalid severity level is configured */
     public function process(\DOMDocument $document, string $content, string $filePath): array
     {
         $violations = [];

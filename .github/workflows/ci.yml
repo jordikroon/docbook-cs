@@ -41,7 +41,7 @@ jobs:
         run: composer install --no-interaction --prefer-dist
 
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --no-progress
+        run: vendor/bin/phpstan analyse --no-progress --error-format=github
 
   tests:
     name: Tests
@@ -59,13 +59,32 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - run: mkdir -p .phpunit.cache
+
       - name: Run PHPUnit
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist
+        run: vendor/bin/phpunit --configuration phpunit.xml.dist --coverage-text=.phpunit.cache/coverage.txt
+
+      - name: Report test results
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: '.phpunit.cache/junit.xml'
+          check_name: 'PHPUnit Test Results'
+
+      - name: Post coverage summary
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          header: coverage
+          path: .phpunit.cache/coverage.txt
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-report
-          path: .phpunit.cache/coverage-html
+          path: |
+            .phpunit.cache/coverage-html
+            .phpunit.cache/coverage.xml
+            .phpunit.cache/junit.xml
           retention-days: 7

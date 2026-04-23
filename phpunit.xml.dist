@@ -33,4 +33,8 @@
 			<text outputFile="php://stdout" showOnlySummary="true" />
 		</report>
 	</coverage>
+
+	<logging>
+		<junit outputFile=".phpunit.cache/junit.xml" />
+	</logging>
 </phpunit>

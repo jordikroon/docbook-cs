@@ -101,6 +101,7 @@ final class SimparaSniff extends AbstractSniff
         return 'DocbookCS.Simpara';
     }
 
+    /** @throws \LogicException if an invalid severity level is configured */
     public function process(\DOMDocument $document, string $content, string $filePath): array
     {
         $violations = [];

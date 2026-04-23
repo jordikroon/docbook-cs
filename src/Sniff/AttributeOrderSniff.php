@@ -18,6 +18,7 @@ final class AttributeOrderSniff extends AbstractSniff
         return 'DocbookCS.AttributeOrder';
     }
 
+    /** @throws \LogicException if an invalid severity level is configured */
     public function process(\DOMDocument $document, string $content, string $filePath): array
     {
         $violations = [];
@@ -51,6 +52,7 @@ final class AttributeOrderSniff extends AbstractSniff
 
     /**
      * @param list<\DocbookCS\Report\Violation> &$violations
+     * @throws \LogicException if an invalid severity level is configured
      */
     private function checkAttributes(
         string $tagName,

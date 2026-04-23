@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace DocbookCS\Sniff;
 
-use DocbookCS\Report\Severity;
-
 /**
  * Ensures that when an element has both xml:id and xmlns (or xmlns:*)
  * attributes, xml:id appears first.

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace DocbookCS\Sniff;
 
-use DocbookCS\Report\Severity;
-
 /**
  * Detects exception/error class names wrapped in <classname> that
  * should use <exceptionname> instead.

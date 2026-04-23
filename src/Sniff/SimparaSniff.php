@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace DocbookCS\Sniff;
 
-use DocbookCS\Report\Severity;
-
 final class SimparaSniff extends AbstractSniff
 {
     private const array SIMPARA_ALLOWED = [

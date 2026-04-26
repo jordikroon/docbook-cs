@@ -26,7 +26,10 @@ final class PathLoaderTest extends TestCase
     #[Test]
     public function itFindsXmlFilesRecursively(): void
     {
-        $matcher = new PathMatcher([]);
+        $basePath = realpath(self::FIXTURE_ROOT);
+        assert($basePath !== false);
+
+        $matcher = new PathMatcher($basePath, []);
         $loader = new PathLoader([self::FIXTURE_ROOT], $matcher);
 
         $files = $loader->loadPaths();
@@ -41,7 +44,10 @@ final class PathLoaderTest extends TestCase
     #[Test]
     public function itExcludesMatchedFiles(): void
     {
-        $matcher = new PathMatcher(['*/skeleton.xml']);
+        $basePath = realpath(self::FIXTURE_ROOT);
+        assert($basePath !== false);
+
+        $matcher = new PathMatcher($basePath, ['*/skeleton.xml']);
         $loader = new PathLoader([self::FIXTURE_ROOT], $matcher);
 
         $files = $loader->loadPaths();
@@ -60,7 +66,10 @@ final class PathLoaderTest extends TestCase
             self::markTestSkipped('Fixture file not found.');
         }
 
-        $matcher = new PathMatcher([]);
+        $basePath = realpath(self::FIXTURE_ROOT);
+        assert($basePath !== false);
+
+        $matcher = new PathMatcher($basePath, []);
         $loader = new PathLoader([$singleFile], $matcher);
 
         $files = $loader->loadPaths();
@@ -78,7 +87,10 @@ final class PathLoaderTest extends TestCase
             self::markTestSkipped('Fixture dummy.txt not found.');
         }
 
-        $matcher = new PathMatcher([]);
+        $basePath = realpath(self::FIXTURE_ROOT);
+        assert($basePath !== false);
+
+        $matcher = new PathMatcher($basePath, []);
         $loader = new PathLoader([$txtFile], $matcher);
 
         $files = $loader->loadPaths();
@@ -95,8 +107,11 @@ final class PathLoaderTest extends TestCase
         // so this is one of the rare cases where runtime creation is justified.
         symlink(self::FIXTURE_ROOT . '/nonexistent_target', $link);
 
+        $basePath = realpath(self::FIXTURE_ROOT);
+        assert($basePath !== false);
+
         try {
-            $matcher = new PathMatcher([]);
+            $matcher = new PathMatcher($basePath, []);
             $loader = new PathLoader([self::FIXTURE_ROOT], $matcher);
 
             $files = $loader->loadPaths();
@@ -112,7 +127,10 @@ final class PathLoaderTest extends TestCase
     #[Test]
     public function itSilentlySkipsNonexistentPaths(): void
     {
-        $matcher = new PathMatcher([]);
+        $basePath = realpath(self::FIXTURE_ROOT);
+        assert($basePath !== false);
+
+        $matcher = new PathMatcher($basePath, []);
         $loader = new PathLoader(['/nonexistent/path'], $matcher);
 
         $files = $loader->loadPaths();
@@ -123,7 +141,10 @@ final class PathLoaderTest extends TestCase
     #[Test]
     public function itReturnsSortedDeduplicated(): void
     {
-        $matcher = new PathMatcher([]);
+        $basePath = realpath(self::FIXTURE_ROOT);
+        assert($basePath !== false);
+
+        $matcher = new PathMatcher($basePath, []);
         $loader = new PathLoader(
             [self::FIXTURE_ROOT, self::FIXTURE_ROOT],
             $matcher,

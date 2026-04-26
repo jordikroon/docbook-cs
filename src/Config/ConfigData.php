@@ -7,6 +7,7 @@ namespace DocbookCS\Config;
 final readonly class ConfigData
 {
     /**
+     * @param array<string, string> $projectRoots
      * @param list<SniffEntry> $sniffs
      * @param list<string> $includePaths
      * @param list<string> $excludePatterns
@@ -14,12 +15,19 @@ final readonly class ConfigData
      * @param string $basePath
      */
     public function __construct(
+        private array $projectRoots,
         private array $sniffs,
         private array $includePaths,
         private array $excludePatterns,
         private array $entityPaths,
         private string $basePath,
     ) {
+    }
+
+    /** @return array<string, string> */
+    public function getProjectRoots(): array
+    {
+        return $this->projectRoots;
     }
 
     /** @return list<SniffEntry> */

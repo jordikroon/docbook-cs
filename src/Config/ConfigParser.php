@@ -67,18 +67,44 @@ final class ConfigParser
         // Register the namespace for xpath queries.
         $root->registerXPathNamespace('d', self::NAMESPACE_URI);
 
-        $sniffs = $this->parseSniffs($root);
-        $includePaths = $this->parsePaths($root, $basePath);
-        $excludePatterns = $this->parseExcludePatterns($root);
-        $entityPaths = $this->parseEntityPaths($root, $basePath);
-
         return new ConfigData(
-            sniffs: $sniffs,
-            includePaths: $includePaths,
-            excludePatterns: $excludePatterns,
-            entityPaths: $entityPaths,
+            projectRoots: $this->parseProjectRoots($root, $basePath),
+            sniffs: $this->parseSniffs($root),
+            includePaths: $this->parsePaths($root, $basePath),
+            excludePatterns: $this->parseExcludePatterns($root),
+            entityPaths: $this->parseEntityPaths($root, $basePath),
             basePath: $basePath,
         );
+    }
+
+    /**
+     * @return array<string, string>
+     * @throws ConfigParserException if the <project> element is missing or if the base path is not within any of the specified project roots.
+     */
+    private function parseProjectRoots(\SimpleXMLElement $root, string $basePath): array
+    {
+        if (!isset($root->project)) {
+            $name = basename($basePath);
+
+            return [
+                dirname($basePath) . '/' . $name => $name,
+                $basePath => $name,
+            ];
+        }
+
+        $directories = [];
+
+        foreach ($root->project->directory ?: [] as $directory) {
+            $directoryName = (string) $directory;
+            $directories[dirname($basePath) . '/' . $directoryName] = $directoryName;
+
+            if ($directory->attributes()->alias) {
+                $alias = (string) $directory->attributes()->alias;
+                $directories[dirname($basePath) . '/' . $alias] = $directoryName;
+            }
+        }
+
+        return $directories;
     }
 
     /**

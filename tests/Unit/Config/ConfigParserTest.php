@@ -31,6 +31,9 @@ final class ConfigParserTest extends TestCase
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory alias="doc">en</directory>
+    </project>
     <sniffs>
         <sniff class="App\Sniffs\ParaSniff" />
         <sniff class="App\Sniffs\IdSniff">
@@ -53,6 +56,12 @@ XML;
 
         $basePath = '/project/doc';
         $config = $this->parser->parseString($xml, $basePath);
+
+        // Project roots
+        $projectRoots = $config->getProjectRoots();
+        self::assertNotEmpty($projectRoots);
+        self::assertSame('en', $projectRoots['/project/en']);
+        self::assertSame('en', $projectRoots['/project/doc']);
 
         // Sniffs
         self::assertCount(2, $config->getSniffs());
@@ -85,6 +94,9 @@ XML;
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory>en</directory>
+    </project>
     <sniffs>
         <sniff class="App\Sniffs\ParaSniff" />
     </sniffs>
@@ -105,6 +117,9 @@ XML;
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory>en</directory>
+    </project>
     <sniffs>
         <sniff class="App\Sniffs\ParaSniff" />
     </sniffs>
@@ -143,6 +158,9 @@ XML;
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory>en</directory>
+    </project>
     <paths><path>foo/</path></paths>
 </docbookcs>
 XML;
@@ -159,6 +177,9 @@ XML;
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory>en</directory>
+    </project>
     <sniffs>
         <sniff />
     </sniffs>
@@ -177,6 +198,9 @@ XML;
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory>en</directory>
+    </project>
     <sniffs>
         <sniff class="App\Sniffs\Foo">
             <property value="bar" />
@@ -211,6 +235,9 @@ XML;
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory>en</directory>
+    </project>
     <sniffs>
         <sniff class="App\Sniffs\ParaSniff" />
     </sniffs>
@@ -234,6 +261,9 @@ XML;
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory>en</directory>
+    </project>
     <sniffs>
         <sniff class="App\Sniffs\ParaSniff" />
     </sniffs>
@@ -257,6 +287,9 @@ XML;
         $xml = <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+    <project>
+        <directory>en</directory>
+    </project>
     <sniffs>
         <sniff class="App\Sniffs\ParaSniff" />
     </sniffs>
@@ -284,5 +317,31 @@ XML;
         $this->expectExceptionMessage('Invalid XML');
 
         $this->parser->parseFile($fixturePath);
+    }
+
+    #[Test]
+    public function itParsesProjectRootsWithAlias(): void
+    {
+        $xml = <<<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<docbookcs>
+    <project>
+        <directory alias="doc">en</directory>
+        <directory alias="ref">reference</directory>
+    </project>
+    <sniffs>
+        <sniff class="App\Sniffs\ParaSniff" />
+    </sniffs>
+</docbookcs>
+XML;
+
+        $config = $this->parser->parseString($xml, '/project/doc');
+
+        $roots = $config->getProjectRoots();
+
+        self::assertSame('en', $roots['/project/en']);
+        self::assertSame('en', $roots['/project/doc']);
+        self::assertSame('reference', $roots['/project/reference']);
+        self::assertSame('reference', $roots['/project/ref']);
     }
 }

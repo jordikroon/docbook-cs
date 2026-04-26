@@ -26,7 +26,7 @@ final class XmlFileProcessor
         ?Report $report = null,
     ) {
         $this->sniffs = $sniffs;
-        $this->preprocessor = $preprocessor ?? new EntityPreprocessor();
+        $this->preprocessor = $preprocessor ?? new EntityPreprocessor([]);
         $this->report = $report ?? new Report();
     }
 

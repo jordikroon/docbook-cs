@@ -1,1 +1,3 @@
-<!ENTITY global.entity "Global entity value">
+<!ENTITY product "Acme Widget">
+<!ENTITY version "1.0.0">
+<!ENTITY greeting "  hello   world  ">

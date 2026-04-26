@@ -1,0 +1,2 @@
+<!ENTITY single_quoted 'single'>
+<!ENTITY % param_entity "param-value">

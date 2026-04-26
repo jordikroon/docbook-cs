@@ -7,38 +7,66 @@ namespace DocbookCS\Runner;
 final class EntityPreprocessor
 {
     private const array PREDEFINED = ['amp', 'lt', 'gt', 'quot', 'apos'];
-    private const string ENTITY_PATTERN = '/&([a-zA-Z_][\w.\-]*);/';
+    private const string ENTITY_PATTERN = '&([a-zA-Z_][\w.\-]*);';
+    private const string XML_DECLARATION_PATTERN = '/<\?xml[^?]*\?>/i';
 
-    private string $replacement;
-
-    public function __construct(string $replacement = '')
-    {
-        $this->replacement = $replacement;
+    /**
+     * @param array<string, string> $entities
+     */
+    public function __construct(
+        private array $entities,
+    ) {
     }
 
-    public function process(string $xmlContent): string
+    public function process(string $xml): string
     {
-        return $this->neutralize(
-            $this->stripDoctype($xmlContent)
-        );
+        $xml = $this->stripDoctype($xml);
+
+        return $this->expandEntities($xml);
     }
 
-    public function neutralize(string $xmlContent): string
+    private function expandEntities(string $content): string
     {
-        return (string)preg_replace_callback(
-            self::ENTITY_PATTERN,
-            function (array $matches): string {
-                if (in_array($matches[1], self::PREDEFINED, true)) {
-                    return $matches[0]; // keep &amp; etc.
-                }
+        $maxDepth = 20;
 
-                return $this->replacement;
-            },
-            $xmlContent,
-        );
+        for ($i = 0; $i < $maxDepth; $i++) {
+            $changed = false;
+
+            $content = preg_replace_callback(
+                '/<!--[\s\S]*?-->|' . self::ENTITY_PATTERN . '/',
+                function (array $matches) use (&$changed): string {
+                    // If this is a comment, return as is
+                    if (str_starts_with($matches[0], '<!--')) {
+                        return $matches[0];
+                    }
+
+                    $name = $matches[1] ?? null;
+                    if (!$name || in_array($name, self::PREDEFINED, true)) {
+                        return $matches[0];
+                    }
+
+                    if (!isset($this->entities[$name])) {
+                        return $matches[0];
+                    }
+
+                    $changed = true;
+
+                    $value = $this->entities[$name];
+
+                    return $this->stripXmlDeclaration($value);
+                },
+                $content,
+            ) ?: $content;
+
+            if (!$changed) {
+                break;
+            }
+        }
+
+        return $content;
     }
 
-    public function stripDoctype(string $xmlContent): string
+    private function stripDoctype(string $xmlContent): string
     {
         $start = stripos($xmlContent, '<!DOCTYPE');
 
@@ -64,16 +92,18 @@ final class EntityPreprocessor
             } elseif ($char === ']' && !$inSingleQuote && !$inDoubleQuote) {
                 $inBracket = false;
             } elseif ($char === '>' && !$inSingleQuote && !$inDoubleQuote && !$inBracket) {
-                // Found the end of the DOCTYPE.
-                $before = substr($xmlContent, 0, $start);
-                $after = substr($xmlContent, $pos + 1);
-
-                return $before . $after;
+                return substr($xmlContent, 0, $start)
+                    . substr($xmlContent, $pos + 1);
             }
 
             $pos++;
         }
 
         return $xmlContent;
+    }
+
+    private function stripXmlDeclaration(string $xmlContent): string
+    {
+        return preg_replace(self::XML_DECLARATION_PATTERN, '', $xmlContent) ?: $xmlContent;
     }
 }

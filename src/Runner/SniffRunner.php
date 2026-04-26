@@ -6,6 +6,7 @@ namespace DocbookCS\Runner;
 
 use DocbookCS\Config\ConfigData;
 use DocbookCS\Config\SniffEntry;
+use DocbookCS\Path\EntityResolver;
 use DocbookCS\Path\PathLoader;
 use DocbookCS\Path\PathMatcher;
 use DocbookCS\Progress\NullProgress;
@@ -34,9 +35,12 @@ final class SniffRunner
 
         $sniffs = $this->instantiateSniffs($config->getSniffs());
 
-        $matcher = new PathMatcher($config->getExcludePatterns());
+        $matcher = new PathMatcher($config->getBasePath(), $config->getExcludePatterns());
 
         $includePaths = $overridePaths ?? $config->getIncludePaths();
+
+        $entityResolver = new EntityResolver($config->getProjectRoots(), $config->getEntityPaths());
+        $entities = $entityResolver->resolve();
 
         $pathLoader = new PathLoader($includePaths, $matcher);
         $files = $pathLoader->loadPaths();
@@ -46,7 +50,7 @@ final class SniffRunner
         }
 
         $report = new Report();
-        $preprocessor = new EntityPreprocessor();
+        $preprocessor = new EntityPreprocessor($entities);
         $processor = new XmlFileProcessor($sniffs, $preprocessor, $report);
 
         $total = count($files);

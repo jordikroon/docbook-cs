@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <docbookcs>
+	<project>
+		<directory alias="doc-en">en</directory>
+		<directory>doc-base</directory>
+	</project>
 	<sniffs>
 		<sniff class="DocbookCS\Sniffs\ParaToSimparaSniff" />
 		<sniff class="DocbookCS\Sniffs\IdNamingSniff">

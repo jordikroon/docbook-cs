@@ -24,54 +24,9 @@ final class EntityResolverTest extends TestCase
     }
 
     #[Test]
-    public function itReturnsEmptyArrayWhenNoPathsGiven(): void
+    public function itReturnsEmptyArrayWhenNoEntityPathsGiven(): void
     {
-        $resolver = new EntityResolver([]);
-
-        self::assertSame([], $resolver->resolve());
-    }
-
-    #[Test]
-    public function itFindsEntityFilesRecursively(): void
-    {
-        $resolver = new EntityResolver([$this->fixtureRoot]);
-
-        $files = $resolver->resolve();
-
-        self::assertNotEmpty($files);
-
-        foreach ($files as $file) {
-            self::assertStringEndsWith('.ent', $file);
-        }
-    }
-
-    #[Test]
-    public function itAcceptsSingleFilePath(): void
-    {
-        $singleFile = $this->fixtureRoot . '/global.ent';
-
-        if (!is_file($singleFile)) {
-            self::markTestSkipped('Fixture file not found.');
-        }
-
-        $resolver = new EntityResolver([$singleFile]);
-
-        $files = $resolver->resolve();
-
-        self::assertCount(1, $files);
-        self::assertStringContainsString('global.ent', $files[0]);
-    }
-
-    #[Test]
-    public function itIgnoresFilesWithWrongExtension(): void
-    {
-        $xmlFile = $this->fixtureRoot . '/not_an_entity.xml';
-
-        if (!is_file($xmlFile)) {
-            self::markTestSkipped('Fixture file not found.');
-        }
-
-        $resolver = new EntityResolver([$xmlFile]);
+        $resolver = new EntityResolver([], []);
 
         self::assertSame([], $resolver->resolve());
     }
@@ -79,68 +34,211 @@ final class EntityResolverTest extends TestCase
     #[Test]
     public function itSilentlySkipsNonexistentPaths(): void
     {
-        $resolver = new EntityResolver(['/nonexistent/path']);
+        $resolver = new EntityResolver([], ['/nonexistent/path/that/does/not/exist']);
 
         self::assertSame([], $resolver->resolve());
     }
 
     #[Test]
-    public function itReturnsSortedDeduplicated(): void
+    public function itParsesSimpleEntityDeclarations(): void
     {
-        $singleFile = $this->fixtureRoot . '/global.ent';
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/global.ent']);
+        $entities = $resolver->resolve();
 
-        if (!is_file($singleFile)) {
-            self::markTestSkipped('Fixture file not found.');
+        self::assertSame('Acme Widget', $entities['product']);
+        self::assertSame('1.0.0', $entities['version']);
+    }
+
+    #[Test]
+    public function itNormalizesWhitespaceInValues(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/global.ent']);
+        $entities = $resolver->resolve();
+
+        self::assertSame('hello world', $entities['greeting']);
+    }
+
+    #[Test]
+    public function itHandlesParameterEntities(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/quoted.ent']);
+        $entities = $resolver->resolve();
+
+        self::assertArrayHasKey('param_entity', $entities);
+        self::assertSame('param-value', $entities['param_entity']);
+    }
+
+    #[Test]
+    public function itHandlesSingleQuotedValues(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/quoted.ent']);
+        $entities = $resolver->resolve();
+
+        self::assertSame('single', $entities['single_quoted']);
+    }
+
+    #[Test]
+    public function itReturnsEmptyForFileWithoutEntityKeyword(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/plain.ent']);
+
+        self::assertSame([], $resolver->resolve());
+    }
+
+    #[Test]
+    public function itReturnsEmptyWhenEntityKeywordPresentButNoMatches(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/broken.ent']);
+
+        self::assertSame([], $resolver->resolve());
+    }
+
+    #[Test]
+    public function itResolvesSystemEntitiesByRelativePath(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/system/main.ent']);
+        $entities = $resolver->resolve();
+
+        self::assertArrayHasKey('inc', $entities);
+        self::assertArrayHasKey('child', $entities);
+        self::assertSame('child-value', $entities['child']);
+    }
+
+    #[Test]
+    public function itResolvesSystemEntitiesByAbsolutePath(): void
+    {
+        $included = $this->fixtureRoot . '/system/included.ent';
+
+        $tmpFile = $this->fixtureRoot . '/system/abs_main.ent';
+        file_put_contents($tmpFile, '<!ENTITY abs_inc SYSTEM "' . $included . '">');
+
+        try {
+            $resolver = new EntityResolver([], [$tmpFile]);
+            $entities = $resolver->resolve();
+
+            self::assertArrayHasKey('child', $entities);
+            self::assertSame('child-value', $entities['child']);
+        } finally {
+            @unlink($tmpFile);
         }
+    }
+
+
+    #[Test]
+    public function itHandlesCircularSystemReferencesViaVisitedTracking(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/circular/a.ent']);
+        $entities = $resolver->resolve();
+
+        self::assertIsArray($entities);
+        self::assertArrayHasKey('a_inc', $entities);
+    }
+
+    #[Test]
+    public function itSkipsUnreadableSystemTargets(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/system/missing_target.ent']);
+        $entities = $resolver->resolve();
+
+        self::assertArrayNotHasKey('missing', $entities);
+    }
+
+    #[Test]
+    public function itResolvesPathsViaProjectRoots(): void
+    {
+        $realRoot = $this->fixtureRoot . '/project_root/real-root';
 
         $resolver = new EntityResolver(
-            [$singleFile, $this->fixtureRoot],
+            [$realRoot => 'virtual-dir'],
+            [$this->fixtureRoot . '/project_root/main.ent']
         );
 
-        $files = $resolver->resolve();
+        $entities = $resolver->resolve();
 
-        $sorted = $files;
-        sort($sorted);
+        self::assertArrayHasKey('mapped', $entities);
+        self::assertSame('mapped-value', $entities['mapped']);
+    }
 
-        self::assertSame($sorted, $files);
-        self::assertSame(array_values(array_unique($files)), $files);
+    #[Test]
+    public function itLeavesReferenceUnchangedWhenProjectRootDirectoryNotMatched(): void
+    {
+        $resolver = new EntityResolver(
+            ['/some/unrelated/root' => 'unrelated-dir'],
+            [$this->fixtureRoot . '/system/main.ent']
+        );
+
+        $entities = $resolver->resolve();
+
+        self::assertArrayHasKey('child', $entities);
+        self::assertSame('child-value', $entities['child']);
+    }
+
+    #[Test]
+    public function itFindsEntityFilesRecursivelyInDirectory(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot]);
+        $entities = $resolver->resolve();
+
+        self::assertArrayHasKey('product', $entities);
+        self::assertArrayHasKey('inner', $entities);
+        self::assertArrayNotHasKey('ignored', $entities);
+    }
+
+    #[Test]
+    public function itIgnoresFilesWithWrongExtension(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/not_an_entity.xml']);
+
+        self::assertSame([], $resolver->resolve());
     }
 
     #[Test]
     public function itSupportsCustomExtension(): void
     {
-        $resolver = new EntityResolver([$this->fixtureRoot], 'xml');
+        $resolver = new EntityResolver(
+            [],
+            [$this->fixtureRoot . '/custom/custom.dtd'],
+            'dtd'
+        );
 
-        $files = $resolver->resolve();
+        $entities = $resolver->resolve();
 
-        foreach ($files as $file) {
-            self::assertStringEndsWith('.xml', $file);
-        }
+        self::assertSame('custom-value', $entities['custom_ent']);
     }
 
     #[Test]
     public function itStripsLeadingDotFromExtension(): void
     {
-        $resolver = new EntityResolver([$this->fixtureRoot], '.ent');
+        $resolver = new EntityResolver(
+            [],
+            [$this->fixtureRoot . '/global.ent'],
+            '.ent'
+        );
 
-        $files = $resolver->resolve();
+        $entities = $resolver->resolve();
 
-        self::assertNotEmpty($files);
-
-        foreach ($files as $file) {
-            self::assertStringEndsWith('.ent', $file);
-        }
+        self::assertSame('Acme Widget', $entities['product']);
     }
 
     #[Test]
-    public function itNormalizesBackslashesInPaths(): void
+    public function itPreservesFirstDefinitionOnDuplicateEntityNames(): void
     {
-        $resolver = new EntityResolver([$this->fixtureRoot]);
+        $resolver = new EntityResolver([], [
+            $this->fixtureRoot . '/duplicates/a_dup.ent',
+            $this->fixtureRoot . '/duplicates/b_dup.ent',
+        ]);
 
-        $files = $resolver->resolve();
+        $entities = $resolver->resolve();
 
-        foreach ($files as $file) {
-            self::assertStringNotContainsString('\\', $file);
-        }
+        self::assertSame('first', $entities['shared']);
+    }
+
+    #[Test]
+    public function itHandlesMultilineEntityValues(): void
+    {
+        $resolver = new EntityResolver([], [$this->fixtureRoot . '/multiline.ent']);
+        $entities = $resolver->resolve();
+
+        self::assertSame('line one line two line three', $entities['block']);
     }
 }

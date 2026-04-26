@@ -6,19 +6,19 @@ namespace DocbookCS\Path;
 
 final readonly class PathMatcher
 {
-    /** @var list<string> */
-    private array $excludePatterns;
-
     /**
      * @param list<string> $excludePatterns
      */
-    public function __construct(array $excludePatterns)
-    {
-        $this->excludePatterns = $excludePatterns;
+    public function __construct(
+        private string $basePath,
+        private array $excludePatterns
+    ) {
     }
 
     public function isExcluded(string $filePath): bool
     {
+        $filePath = str_replace($this->basePath . '/', '', $filePath);
+
         // Normalize to forward slashes for consistent matching.
         $normalized = str_replace('\\', '/', $filePath);
 

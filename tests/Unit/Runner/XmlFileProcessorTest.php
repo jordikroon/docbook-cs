@@ -8,8 +8,8 @@ use DocbookCS\Report\FileReport;
 use DocbookCS\Report\Report;
 use DocbookCS\Report\Severity;
 use DocbookCS\Report\Violation;
-use DocbookCS\Runner\XmlFileProcessor;
 use DocbookCS\Runner\EntityPreprocessor;
+use DocbookCS\Runner\XmlFileProcessor;
 use DocbookCS\Sniff\SniffInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -23,223 +23,184 @@ use PHPUnit\Framework\TestCase;
 final class XmlFileProcessorTest extends TestCase
 {
     #[Test]
-    public function itReportsParseErrorForInvalidXml(): void
+    public function itReportsParseErrors(): void
     {
-        $processor = new XmlFileProcessor([]);
+        $report = $this->processor()->processString('<broken><unclosed>', 'bad.xml');
 
-        $fileReport = $processor->processString('<broken><unclosed>', 'bad.xml');
+        $this->assertInternalError($report, 'XML parse error');
+    }
 
-        self::assertTrue($fileReport->hasViolations());
-        self::assertStringContainsString(
-            'XML parse error',
-            $fileReport->getViolations()[0]->message,
+    #[Test]
+    public function itReportsMissingFiles(): void
+    {
+        $report = $this->processor()->processFile('/nonexistent/path/file.xml');
+
+        $this->assertInternalError($report, 'Could not read file');
+    }
+
+    #[Test]
+    public function itPrefersReportPathOverFilePath(): void
+    {
+        $report = $this->processor()->processFile(
+            '/nonexistent/path/file.xml',
+            [],
+            'relative/file.xml'
+        );
+
+        self::assertSame('relative/file.xml', $report->filePath);
+    }
+
+    #[Test]
+    public function itAcceptsValidXmlWithoutViolations(): void
+    {
+        $xml = $this->xml('<chapter><simpara>ok</simpara></chapter>');
+
+        $report = $this->processor()->processString($xml);
+
+        self::assertFalse($report->hasViolations());
+    }
+
+    #[Test]
+    public function itHandlesEntitiesWithoutParseErrors(): void
+    {
+        $xml = $this->xml(
+            '<!DOCTYPE chapter SYSTEM "docbook.dtd">
+        <chapter>
+          <simpara>&link.superglobals; &php.ini; &amp;</simpara>
+        </chapter>'
+        );
+
+        $processor = $this->processor([], new EntityPreprocessor([
+            'link.superglobals' => '',
+            'php.ini' => '',
+        ]));
+
+        $report = $processor->processString($xml);
+
+        self::assertCount(
+            0,
+            array_filter(
+                $report->getViolations(),
+                fn($v) => $v->sniffCode === 'DocbookCS.Internal'
+            )
         );
     }
 
     #[Test]
-    public function itReportsErrorForMissingFile(): void
+    public function itUsesCustomPreprocessor(): void
     {
-        $processor = new XmlFileProcessor([]);
+        $processor = $this->processor([], new EntityPreprocessor([
+            'custom.entity' => '[X]',
+        ]));
 
-        $fileReport = $processor->processFile('/nonexistent/path/file.xml');
+        $xml = $this->xml('<chapter><simpara>&custom.entity;</simpara></chapter>');
 
-        self::assertTrue($fileReport->hasViolations());
-        self::assertStringContainsString(
-            'Could not read file',
-            $fileReport->getViolations()[0]->message,
+        $report = $processor->processString($xml);
+
+        self::assertCount(
+            0,
+            array_filter(
+                $report->getViolations(),
+                fn($v) => $v->sniffCode === 'DocbookCS.Internal'
+            )
         );
     }
 
     #[Test]
-    public function itUsesReportPathInsteadOfFilePathWhenProvided(): void
+    public function itReturnsZeroViolationsWithoutSniffs(): void
     {
-        $processor = new XmlFileProcessor([]);
+        $xml = $this->xml('<chapter><para>Hello</para></chapter>');
 
-        $fileReport = $processor->processFile('/nonexistent/path/file.xml', [], 'relative/file.xml');
+        $report = $this->processor()->processString($xml);
 
-        self::assertSame('relative/file.xml', $fileReport->filePath);
+        self::assertSame(0, $report->getViolationCount());
     }
 
     #[Test]
-    public function itParsesCleanXmlWithNoViolations(): void
+    public function itReturnsAllViolationsWithoutDiffFiltering(): void
     {
-        $processor = new XmlFileProcessor([]);
+        $sniff = $this->sniff([3, 5]);
 
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<chapter>
-  <simpara>Simple text.</simpara>
-</chapter>
-XML;
-
-        $fileReport = $processor->processString($xml, 'clean.xml');
-
-        self::assertFalse($fileReport->hasViolations());
-    }
-
-    #[Test]
-    public function itNeutralizesEntitiesBeforeParsing(): void
-    {
-        $processor = new XmlFileProcessor([]);
-
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE chapter SYSTEM "docbook.dtd">
-<chapter>
-  <simpara>&link.superglobals; are &php.ini; things and &amp; works.</simpara>
-</chapter>
-XML;
-
-        $fileReport = $processor->processString($xml, 'entity-test.xml');
-
-        $parseErrors = array_filter(
-            $fileReport->getViolations(),
-            static fn($v) => $v->sniffCode === 'DocbookCS.Internal',
+        $xml = $this->xml(
+            '<chapter>
+          <simpara>3</simpara>
+          <simpara>4</simpara>
+          <simpara>5</simpara>
+        </chapter>'
         );
 
-        self::assertCount(0, $parseErrors);
+        $report = $this->processor([$sniff])->processString($xml);
+
+        self::assertSame(2, $report->getViolationCount());
     }
 
     #[Test]
-    public function itAcceptsCustomPreprocessor(): void
+    public function itFiltersViolationsByChangedLines(): void
     {
-        $preprocessor = new EntityPreprocessor('[REPLACED]');
-        $processor    = new XmlFileProcessor([], $preprocessor);
+        $sniff = $this->sniff([3, 5]);
 
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<chapter>
-  <simpara>&custom.entity; text.</simpara>
-</chapter>
-XML;
-
-        $fileReport = $processor->processString($xml, 'custom.xml');
-
-        $parseErrors = array_filter(
-            $fileReport->getViolations(),
-            static fn($v) => $v->sniffCode === 'DocbookCS.Internal',
+        $xml = $this->xml(
+            '<chapter>
+          <simpara>3</simpara>
+          <simpara>4</simpara>
+          <simpara>5</simpara>
+        </chapter>'
         );
 
-        self::assertCount(0, $parseErrors);
+        $report = $this->processor([$sniff])->processString($xml, 'f.xml', [3]);
+
+        self::assertSame(1, $report->getViolationCount());
+        self::assertSame(3, $report->getViolations()[0]->line);
     }
 
     #[Test]
-    public function itReturnsZeroViolationsForEmptySniffList(): void
+    public function itExpandsElementSpanForNestedChanges(): void
     {
-        $processor = new XmlFileProcessor([]);
+        $sniff = $this->sniff([3]);
 
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<chapter><para>Hello.</para></chapter>
-XML;
+        $xml = $this->xml(
+            '<chapter>
+          <para>
+            <emphasis>
+              <literal>line 6</literal>
+            </emphasis>
+          </para>
+        </chapter>'
+        );
 
-        $fileReport = $processor->processString($xml, 'empty-sniffs.xml');
+        $report = $this->processor([$sniff])->processString($xml, 'x.xml', [6]);
 
-        self::assertSame(0, $fileReport->getViolationCount());
+        self::assertSame(1, $report->getViolationCount());
     }
 
     #[Test]
-    public function itReturnsAllViolationsWhenNoChangedLinesGiven(): void
+    public function itIgnoresChangesOutsideElementSpan(): void
     {
-        $sniff = $this->makeSniffWithViolationsAtLines([3, 5]);
-        $processor = new XmlFileProcessor([$sniff]);
+        $sniff = $this->sniff([3]);
 
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<chapter>
-  <simpara>line 3</simpara>
-  <simpara>line 4</simpara>
-  <simpara>line 5</simpara>
-</chapter>
-XML;
+        $xml = $this->xml(
+            '<chapter>
+          <para>text</para>
+          <simpara>line 7</simpara>
+        </chapter>'
+        );
 
-        $fileReport = $processor->processString($xml, 'all.xml');
+        $report = $this->processor([$sniff])->processString($xml, 'x.xml', [7]);
 
-        self::assertSame(2, $fileReport->getViolationCount());
+        self::assertSame(0, $report->getViolationCount());
     }
 
     #[Test]
-    public function itFiltersViolationsToChangedLinesWhenDiffProvided(): void
+    public function itKeepsInternalErrorsEvenWithDiffFiltering(): void
     {
-        $sniff = $this->makeSniffWithViolationsAtLines([3, 5]);
-        $processor = new XmlFileProcessor([$sniff]);
+        $report = $this->processor()->processFile('/nonexistent/path/file.xml', [42]);
 
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<chapter>
-  <simpara>line 3</simpara>
-  <simpara>line 4</simpara>
-  <simpara>line 5</simpara>
-</chapter>
-XML;
-
-        // Only line 3 changed — violation at line 5 should be suppressed.
-        $fileReport = $processor->processString($xml, 'filtered.xml', [3]);
-
-        self::assertSame(1, $fileReport->getViolationCount());
-        self::assertSame(3, $fileReport->getViolations()[0]->line);
-    }
-
-    #[Test]
-    public function itIncludesViolationWhenChangedLineIsInsideElement(): void
-    {
-        // Violation is on the <para> opening tag (line 3), but the changed
-        // content is on line 4 (inside the element). The filtering must
-        // expand to the parent element's span.
-        $sniff = $this->makeSniffWithViolationsAtLines([3]);
-        $processor = new XmlFileProcessor([$sniff]);
-
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<chapter>
-  <para>
-    content on line 4
-  </para>
-</chapter>
-XML;
-
-        // Line 3 is the <para> opening; changed line is 4 (inside the element).
-        $fileReport = $processor->processString($xml, 'inner.xml', [4]);
-
-        self::assertSame(1, $fileReport->getViolationCount());
-        self::assertSame(3, $fileReport->getViolations()[0]->line);
-    }
-
-    #[Test]
-    public function itSuppressesViolationWhenNoChangedLineIsInsideElement(): void
-    {
-        // Violation at line 3 (<para>), but changed line is 7 (a different element).
-        $sniff = $this->makeSniffWithViolationsAtLines([3]);
-        $processor = new XmlFileProcessor([$sniff]);
-
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<chapter>
-  <para>
-    content
-  </para>
-  <simpara>other element at line 7</simpara>
-</chapter>
-XML;
-
-        $fileReport = $processor->processString($xml, 'suppress.xml', [7]);
-
-        self::assertSame(0, $fileReport->getViolationCount());
-    }
-
-    #[Test]
-    public function itKeepsInternalErrorsRegardlessOfChangedLines(): void
-    {
-        $processor = new XmlFileProcessor([]);
-
-        $fileReport = $processor->processFile('/nonexistent/path/file.xml', [42]);
-
-        self::assertTrue($fileReport->hasViolations());
-        self::assertSame('DocbookCS.Internal', $fileReport->getViolations()[0]->sniffCode);
+        self::assertTrue($report->hasViolations());
+        self::assertSame('DocbookCS.Internal', $report->getViolations()[0]->sniffCode);
     }
 
     /** @param list<int> $lines */
-    private function makeSniffWithViolationsAtLines(array $lines): SniffInterface
+    private function sniff(array $lines): SniffInterface
     {
         return new class ($lines) implements SniffInterface {
             /** @param list<int> $lines */
@@ -260,9 +221,9 @@ XML;
                         filePath: $filePath,
                         line: $line,
                         message: "violation at line {$line}",
-                        severity: Severity::WARNING,
+                        severity: Severity::WARNING
                     ),
-                    $this->lines,
+                    $this->lines
                 );
             }
 
@@ -272,50 +233,27 @@ XML;
         };
     }
 
-    #[Test]
-    public function itExpandsViolationSpanThroughDeeplyNestedElements(): void
+    /** @param list<SniffInterface> $sniffs */
+    private function processor(array $sniffs = [], ?EntityPreprocessor $pre = null): XmlFileProcessor
     {
-        $sniff = $this->makeSniffWithViolationsAtLines([3]);
-        $processor = new XmlFileProcessor([$sniff]);
-
-        $xml = <<<'XML'
-<?xml version="1.0" encoding="UTF-8"?>
-<chapter>
-  <para>
-    <emphasis>
-      <literal>
-        deeply nested content on line 6
-      </literal>
-    </emphasis>
-  </para>
-</chapter>
-XML;
-
-        $fileReport = $processor->processString($xml, 'deep-nest.xml', [6]);
-
-        self::assertSame(1, $fileReport->getViolationCount());
-        self::assertSame(3, $fileReport->getViolations()[0]->line);
+        return new XmlFileProcessor(
+            $sniffs,
+            $pre ?? new EntityPreprocessor([]) // always pass array
+        );
     }
 
-    #[Test]
-    public function itDoesNotExpandSpanWhenNestedElementEndsBeforeMax(): void
+    private function xml(string $body): string
     {
-        $sniff = $this->makeSniffWithViolationsAtLines([3]);
-        $processor = new XmlFileProcessor([$sniff]);
-
-        $xml = <<<'XML'
+        return <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
-<chapter>
-  <para>
-    <emphasis>short</emphasis>
-    text content stretching to line 5
-  </para>
-  <simpara>unrelated line 7</simpara>
-</chapter>
+$body
 XML;
+    }
 
-        $fileReport = $processor->processString($xml, 'shallow-nest.xml', [7]);
-
-        self::assertSame(0, $fileReport->getViolationCount());
+    private function assertInternalError(FileReport $report, string $messagePart): void
+    {
+        self::assertTrue($report->hasViolations());
+        self::assertSame('DocbookCS.Internal', $report->getViolations()[0]->sniffCode);
+        self::assertStringContainsString($messagePart, $report->getViolations()[0]->message);
     }
 }

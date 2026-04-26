@@ -6,6 +6,7 @@ namespace DocbookCS\Tests\Unit\Runner;
 
 use DocbookCS\Config\ConfigData;
 use DocbookCS\Config\SniffEntry;
+use DocbookCS\Path\EntityResolver;
 use DocbookCS\Path\PathLoader;
 use DocbookCS\Path\PathMatcher;
 use DocbookCS\Progress\NullProgress;
@@ -28,6 +29,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(PathMatcher::class)]
 #[CoversClass(NullProgress::class)]
 #[CoversClass(EntityPreprocessor::class)]
+#[CoversClass(EntityResolver::class)]
 #[CoversClass(XmlFileProcessor::class)]
 #[CoversClass(Report::class)]
 #[CoversClass(SniffEntry::class)]
@@ -41,6 +43,7 @@ final class SniffRunnerTest extends TestCase
     private function createConfig(array $sniffs = []): ConfigData
     {
         return new ConfigData(
+            [],
             $sniffs,
             [self::FIXTURE_DIR],
             [],
@@ -121,8 +124,7 @@ final class SniffRunnerTest extends TestCase
             }
         };
 
-        $entry = new SniffEntry($sniff::class);
-        $config = $this->createConfig(sniffs: [$entry]);
+        $config = $this->createConfig(sniffs: [new SniffEntry($sniff::class)]);
 
         $runner = new SniffRunner();
         $report = $runner->run($config);
@@ -159,8 +161,7 @@ final class SniffRunnerTest extends TestCase
             }
         };
 
-        $entry = new SniffEntry($sniff::class);
-        $config = $this->createConfig(sniffs: [$entry]);
+        $config = $this->createConfig(sniffs: [new SniffEntry($sniff::class)]);
 
         $runner = new SniffRunner();
         $report = $runner->run($config);
@@ -195,8 +196,7 @@ final class SniffRunnerTest extends TestCase
             }
         };
 
-        $entry = new SniffEntry($sniffClass::class, ['someProp' => 'someValue']);
-        $config = $this->createConfig(sniffs: [$entry]);
+        $config = $this->createConfig(sniffs: [new SniffEntry($sniffClass::class, ['someProp' => 'someValue'])]);
 
         $runner = new SniffRunner();
         $runner->run($config);
@@ -207,8 +207,7 @@ final class SniffRunnerTest extends TestCase
     #[Test]
     public function itThrowsWhenSniffClassDoesNotExist(): void
     {
-        $entry = new SniffEntry('NonExistent\\FakeSniff', []);
-        $config = $this->createConfig(sniffs: [$entry]);
+        $config = $this->createConfig(sniffs: [new SniffEntry('NonExistent\\FakeSniff')]);
 
         $runner = new SniffRunner();
 
@@ -221,8 +220,7 @@ final class SniffRunnerTest extends TestCase
     #[Test]
     public function itThrowsWhenClassDoesNotImplementSniffInterface(): void
     {
-        $entry = new SniffEntry(\stdClass::class, []);
-        $config = $this->createConfig(sniffs: [$entry]);
+        $config = $this->createConfig(sniffs: [new SniffEntry(\stdClass::class)]);
 
         $runner = new SniffRunner();
 

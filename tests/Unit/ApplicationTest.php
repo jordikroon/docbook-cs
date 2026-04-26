@@ -10,6 +10,7 @@ use DocbookCS\Diff\DiffParser;
 use DocbookCS\Config\ConfigParser;
 use DocbookCS\Config\ConfigParserException;
 use DocbookCS\Config\SniffEntry;
+use DocbookCS\Path\EntityResolver;
 use DocbookCS\Path\PathLoader;
 use DocbookCS\Path\PathMatcher;
 use DocbookCS\Progress\NullProgress;
@@ -44,6 +45,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(JsonReporter::class)]
 #[CoversClass(FileReport::class)]
 #[CoversClass(ExceptionNameSniff::class)]
+#[CoversClass(EntityResolver::class)]
 final class ApplicationTest extends TestCase
 {
     private const string FIXTURE_DIR = __DIR__ . '/../fixtures/application';

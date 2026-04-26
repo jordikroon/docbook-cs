@@ -110,7 +110,7 @@ final class ConsoleReporter implements ReporterInterface
 
             $output .= sprintf(
                 ' %-40s %6.3fs (%5.1f%%)',
-                    $sniff,
+                $sniff,
                 $time,
                 $percent,
             ) . PHP_EOL;

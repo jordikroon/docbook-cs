@@ -195,5 +195,4 @@ final class ConsoleProgressTest extends TestCase
         self::assertStringNotContainsString(' x', $output);
         self::assertStringNotContainsString(' .', $output);
     }
-
 }

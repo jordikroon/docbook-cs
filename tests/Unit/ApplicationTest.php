@@ -424,4 +424,47 @@ DIFF);
             self::assertSame('', $this->readStream($stderr), "stderr should be empty for --report={$format}");
         }
     }
+
+    #[Test]
+    public function itShowsPerformanceWhenPerfFlagIsEnabled(): void
+    {
+        $app = new Application(
+            [
+                'docbook-cs',
+                '--config=' . self::VALID_CONFIG,
+                '--perf',
+                self::SCAN_FILE,
+            ],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $exitCode = $app->run();
+
+        self::assertNotSame(2, $exitCode);
+
+        $output = $this->readStream($this->stdout);
+
+        self::assertStringContainsString('PERFORMANCE', $output);
+    }
+
+    #[Test]
+    public function itDoesNotShowPerformanceByDefault(): void
+    {
+        $app = new Application(
+            [
+                'docbook-cs',
+                '--config=' . self::VALID_CONFIG,
+                self::SCAN_FILE,
+            ],
+            $this->stdout,
+            $this->stderr,
+        );
+
+        $app->run();
+
+        $output = $this->readStream($this->stdout);
+
+        self::assertStringNotContainsString('PERFORMANCE', $output);
+    }
 }

@@ -10,10 +10,12 @@ use DocbookCS\Report\Severity;
 final class ConsoleReporter implements ReporterInterface
 {
     private bool $useColors;
+    private bool $showPerformance;
 
-    public function __construct(bool $useColors = true)
+    public function __construct(bool $useColors = true, bool $showPerformance = false)
     {
         $this->useColors = $useColors;
+        $this->showPerformance = $showPerformance;
     }
 
     public function generate(Report $report): string
@@ -45,6 +47,11 @@ final class ConsoleReporter implements ReporterInterface
         $output .= PHP_EOL;
         $output .= $this->buildSummary($report) . PHP_EOL;
 
+        if ($this->showPerformance) {
+            $output .= PHP_EOL;
+            $output .= $this->buildPerformance($report) . PHP_EOL;
+        }
+
         return $output;
     }
 
@@ -54,6 +61,9 @@ final class ConsoleReporter implements ReporterInterface
         $errors = $report->getTotalErrors();
         $warnings = $report->getTotalWarnings();
         $total = $report->getTotalViolations();
+        $time = $report->getTotalTime();
+
+        $timeLine = sprintf('Total runtime: %.3fs', $time);
 
         if ($total === 0) {
             return $this->green(
@@ -61,7 +71,7 @@ final class ConsoleReporter implements ReporterInterface
                     'OK -- %d file(s) scanned, no violations found.',
                     $files,
                 )
-            );
+            ) . PHP_EOL . $this->dim($timeLine);
         }
 
         return $this->red(
@@ -72,7 +82,41 @@ final class ConsoleReporter implements ReporterInterface
                 $warnings,
                 count($report->getFileReports()),
             )
-        );
+        ) . PHP_EOL . $this->dim($timeLine);
+    }
+
+    private function buildPerformance(Report $report): string
+    {
+        $totalTime = $report->getTotalTime();
+        $sniffTimes = $report->getSniffTimes();
+
+        if ($totalTime <= 0.0 || $sniffTimes === []) {
+            return $this->dim('No performance data available.');
+        }
+
+        // Sort slowest first
+        arsort($sniffTimes);
+
+        $output = $this->bold('PERFORMANCE') . PHP_EOL;
+        $output .= str_repeat('-', 40) . PHP_EOL;
+
+        $output .= sprintf(
+            ' Total runtime: %.3fs',
+            $totalTime
+        ) . PHP_EOL . PHP_EOL;
+
+        foreach ($sniffTimes as $sniff => $time) {
+            $percent = ($time / $totalTime) * 100;
+
+            $output .= sprintf(
+                ' %-40s %6.3fs (%5.1f%%)',
+                    $sniff,
+                $time,
+                $percent,
+            ) . PHP_EOL;
+        }
+
+        return $output;
     }
 
     private function formatSeverity(Severity $severity): string

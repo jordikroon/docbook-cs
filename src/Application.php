@@ -107,7 +107,12 @@ final class Application
             return 2;
         }
 
-        $reporter = $this->createReporter($options['report'], $options['colors']);
+        $reporter = $this->createReporter(
+            $options['report'],
+            $options['colors'],
+            $options['perf']
+        );
+
         $this->write($reporter->generate($report));
 
         return (int) $report->hasViolations();
@@ -144,6 +149,7 @@ final class Application
      *     quiet: bool,
      *     paths: list<string>,
      *     diff: string|null,
+     *     perf: bool,
      * }
      */
     private function parseArgv(): array
@@ -157,6 +163,7 @@ final class Application
             'quiet' => false,
             'paths' => [],
             'diff' => null,
+            'perf' => false,
         ];
 
         $args = array_slice($this->argv, 1); // skip script name
@@ -235,6 +242,12 @@ final class Application
                 continue;
             }
 
+            if ($arg === '--perf') {
+                $result['perf'] = true;
+                $i++;
+                continue;
+            }
+
             // Anything else is a path to scan.
             if (!str_starts_with($arg, '-')) {
                 $result['paths'][] = $arg;
@@ -302,12 +315,12 @@ final class Application
         return $parser->parseFile($configPath);
     }
 
-    private function createReporter(string $format, bool $colors): ReporterInterface
+    private function createReporter(string $format, bool $colors, bool $perf): ReporterInterface
     {
         return match ($format) {
             'checkstyle' => new CheckstyleReporter(),
             'json' => new JsonReporter(),
-            default => new ConsoleReporter($colors),
+            default => new ConsoleReporter($colors, $perf),
         };
     }
 

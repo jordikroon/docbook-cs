@@ -11,6 +11,11 @@ final class Report
 
     private int $filesScanned = 0;
 
+    private float $totalTime = 0.0;
+
+    /** @var array<string, float> */
+    private array $sniffTimes = [];
+
     public function addFileReport(FileReport $fileReport): void
     {
         $this->fileReports[$fileReport->filePath] = $fileReport;
@@ -78,5 +83,30 @@ final class Report
         }
 
         return $all;
+    }
+
+    public function setTotalTime(float $time): void
+    {
+        $this->totalTime = $time;
+    }
+
+    public function addSniffTime(string $sniffClass, float $time): void
+    {
+        if (!isset($this->sniffTimes[$sniffClass])) {
+            $this->sniffTimes[$sniffClass] = 0.0;
+        }
+
+        $this->sniffTimes[$sniffClass] += $time;
+    }
+
+    public function getTotalTime(): float
+    {
+        return $this->totalTime;
+    }
+
+    /** @return array<string, float> */
+    public function getSniffTimes(): array
+    {
+        return $this->sniffTimes;
     }
 }

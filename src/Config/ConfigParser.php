@@ -79,7 +79,8 @@ final class ConfigParser
 
     /**
      * @return array<string, string>
-     * @throws ConfigParserException if the <project> element is missing or if the base path is not within any of the specified project roots.
+     * @throws ConfigParserException if the <project> element is missing or if
+     * the base path is not within any of the specified project roots.
      */
     private function parseProjectRoots(\SimpleXMLElement $root, string $basePath): array
     {

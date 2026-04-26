@@ -90,6 +90,7 @@ final class EntityPreprocessorTest extends TestCase
         self::assertSame($input, $result);
     }
 
+    /** @param array<string, string> $entities */
     #[Test]
     #[DataProvider('entityNameProvider')]
     public function itHandlesVariousEntityNameFormats(string $input, string $expected, array $entities): void

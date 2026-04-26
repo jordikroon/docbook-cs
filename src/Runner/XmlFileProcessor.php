@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DocbookCS\Runner;
 
 use DocbookCS\Report\FileReport;
+use DocbookCS\Report\Report;
 use DocbookCS\Report\Severity;
 use DocbookCS\Report\Violation;
 use DocbookCS\Sniff\SniffInterface;
@@ -16,16 +17,17 @@ final class XmlFileProcessor
 
     private EntityPreprocessor $preprocessor;
 
-    /**
-     * @param list<SniffInterface> $sniffs
-     * @param EntityPreprocessor|null $preprocessor
-     */
+    private Report $report;
+
+    /** @param list<SniffInterface> $sniffs */
     public function __construct(
         array $sniffs,
         ?EntityPreprocessor $preprocessor = null,
+        ?Report $report = null,
     ) {
         $this->sniffs = $sniffs;
         $this->preprocessor = $preprocessor ?? new EntityPreprocessor();
+        $this->report = $report ?? new Report();
     }
 
     /** @param list<int> $changedLines */
@@ -76,9 +78,13 @@ final class XmlFileProcessor
 
         $violations = [];
         foreach ($this->sniffs as $sniff) {
+            $start = microtime(true);
+
             foreach ($sniff->process($document, $content, $filePath) as $violation) {
                 $violations[] = $violation;
             }
+
+            $this->report->addSniffTime($sniff->getCode(), microtime(true) - $start);
         }
 
         if ($changedLines !== []) {

@@ -30,6 +30,8 @@ final class SniffRunner
      */
     public function run(ConfigData $config, ?array $overridePaths = null, ?array $diffLines = null): Report
     {
+        $startTime = microtime(true);
+
         $sniffs = $this->instantiateSniffs($config->getSniffs());
 
         $matcher = new PathMatcher($config->getExcludePatterns());
@@ -43,10 +45,10 @@ final class SniffRunner
             $files = $this->filterByDiff($files, array_keys($diffLines));
         }
 
-        $preprocessor = new EntityPreprocessor();
-        $processor = new XmlFileProcessor($sniffs, $preprocessor);
-
         $report = new Report();
+        $preprocessor = new EntityPreprocessor();
+        $processor = new XmlFileProcessor($sniffs, $preprocessor, $report);
+
         $total = count($files);
 
         $this->progress->start($total);
@@ -54,8 +56,15 @@ final class SniffRunner
         foreach ($files as $index => $file) {
             $report->incrementFilesScanned();
 
-            $changedLines = $diffLines !== null ? $this->getChangedLinesForFile($file, $diffLines) : [];
-            $fileReport = $processor->processFile($file, $changedLines, $this->makeRelative($file));
+            $changedLines = $diffLines !== null
+                ? $this->getChangedLinesForFile($file, $diffLines)
+                : [];
+
+            $fileReport = $processor->processFile(
+                $file,
+                $changedLines,
+                $this->makeRelative($file),
+            );
 
             $violationCount = $fileReport->getViolationCount();
 
@@ -67,6 +76,8 @@ final class SniffRunner
         }
 
         $this->progress->finish();
+
+        $report->setTotalTime(microtime(true) - $startTime);
 
         return $report;
     }
@@ -150,8 +161,10 @@ final class SniffRunner
         if ($cwd === false) {
             return $absolutePath; // @codeCoverageIgnore
         }
+
         $prefix = rtrim(str_replace('\\', '/', $cwd), '/') . '/';
         $normalized = str_replace('\\', '/', $absolutePath);
+
         if (str_starts_with($normalized, $prefix)) {
             return substr($normalized, strlen($prefix));
         }

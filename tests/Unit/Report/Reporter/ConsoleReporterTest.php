@@ -360,4 +360,85 @@ final class ConsoleReporterTest extends TestCase
         self::assertNotEmpty($violationLine);
         self::assertSame(3, substr_count($violationLine, '|'));
     }
+
+    #[Test]
+    public function itShowsNoPerformanceDataWhenEmpty(): void
+    {
+        $reporter = new ConsoleReporter(useColors: false, showPerformance: true);
+
+        $report = new Report();
+        $report->incrementFilesScanned();
+
+        $output = $reporter->generate($report);
+
+        self::assertStringContainsString('No performance data available.', $output);
+    }
+
+    #[Test]
+    public function itShowsPerformanceSectionWithHeader(): void
+    {
+        $reporter = new ConsoleReporter(useColors: false, showPerformance: true);
+
+        $report = new Report();
+        $report->incrementFilesScanned();
+
+        $report->setTotalTime(2.0);
+        $report->addSniffTime('SniffA', 1.0);
+
+        $output = $reporter->generate($report);
+
+        self::assertStringContainsString('PERFORMANCE', $output);
+        self::assertStringContainsString('Total runtime: 2.000s', $output);
+    }
+
+    #[Test]
+    public function itSortsSniffTimesBySlowestFirst(): void
+    {
+        $reporter = new ConsoleReporter(useColors: false, showPerformance: true);
+
+        $report = new Report();
+        $report->setTotalTime(3.0);
+
+        $report->addSniffTime('FastSniff', 0.5);
+        $report->addSniffTime('SlowSniff', 2.0);
+        $report->addSniffTime('MediumSniff', 1.0);
+
+        $output = $reporter->generate($report);
+
+        $slowPos = strpos($output, 'SlowSniff');
+        $mediumPos = strpos($output, 'MediumSniff');
+        $fastPos = strpos($output, 'FastSniff');
+
+        self::assertTrue($slowPos < $mediumPos);
+        self::assertTrue($mediumPos < $fastPos);
+    }
+
+    #[Test]
+    public function itDisplaysTimeAndPercentagePerSniff(): void
+    {
+        $reporter = new ConsoleReporter(useColors: false, showPerformance: true);
+
+        $report = new Report();
+        $report->setTotalTime(2.0);
+
+        $report->addSniffTime('SniffA', 1.0); // 50%
+
+        $output = $reporter->generate($report);
+
+        self::assertStringContainsString('1.000s ( 50.0%)', $output);
+    }
+
+    #[Test]
+    public function itDoesNotShowPerformanceWhenDisabled(): void
+    {
+        $reporter = new ConsoleReporter(useColors: false, showPerformance: false);
+
+        $report = new Report();
+        $report->setTotalTime(2.0);
+        $report->addSniffTime('SniffA', 1.0);
+
+        $output = $reporter->generate($report);
+
+        self::assertStringNotContainsString('PERFORMANCE', $output);
+    }
 }

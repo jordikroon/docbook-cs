@@ -18,6 +18,9 @@ final class JsonReporter implements ReporterInterface
                 'warnings' => $report->getTotalWarnings(),
             ],
             'files' => [],
+            'performance' => [
+                'total_runtime_seconds' => $report->getTotalTime(),
+            ],
         ];
 
         foreach ($report->getFileReports() as $fileReport) {

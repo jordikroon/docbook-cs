@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DocbookCS\Tests\Unit\Runner;
 
 use DocbookCS\Report\FileReport;
+use DocbookCS\Report\Report;
 use DocbookCS\Report\Severity;
 use DocbookCS\Report\Violation;
 use DocbookCS\Runner\XmlFileProcessor;
@@ -18,6 +19,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(FileReport::class)]
 #[CoversClass(Violation::class)]
 #[CoversClass(XmlFileProcessor::class)]
+#[CoversClass(Report::class)]
 final class XmlFileProcessorTest extends TestCase
 {
     #[Test]

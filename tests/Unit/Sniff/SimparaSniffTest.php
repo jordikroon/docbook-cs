@@ -104,4 +104,67 @@ final class SimparaSniffTest extends TestCase
 
         self::assertSame(2, $violations[0]->line);
     }
+
+    #[Test]
+    public function itDoesNotFlagParaInsideFormalpara(): void
+    {
+        $doc = $this->createDocument(
+            '<root>
+                <formalpara>
+                    <title>Title</title>
+                    <para>Text</para>
+                </formalpara>
+            </root>'
+        );
+
+        self::assertSame([], new SimparaSniff()->process($doc, '', 'file.xml'));
+    }
+
+    #[Test]
+    public function itDoesNotFlagParaWithInlineContentInsideFormalpara(): void
+    {
+        $doc = $this->createDocument(
+            '<root>
+                <formalpara>
+                    <title>Title</title>
+                    <para>Text with <emphasis>emphasis</emphasis></para>
+                </formalpara>
+            </root>'
+        );
+
+        self::assertSame([], new SimparaSniff()->process($doc, '', 'file.xml'));
+    }
+
+    #[Test]
+    public function itStillFlagsParasOutsideFormalparaWhenSiblingIsFormalpara(): void
+    {
+        $doc = $this->createDocument(
+            '<root>
+                <formalpara>
+                    <title>Title</title>
+                    <para>Inside formalpara</para>
+                </formalpara>
+                <para>Outside formalpara</para>
+            </root>'
+        );
+
+        $violations = new SimparaSniff()->process($doc, '', 'file.xml');
+
+        self::assertCount(1, $violations);
+    }
+
+    #[Test]
+    public function itDoesNotFlagParaInFormalparaRegardlessOfCase(): void
+    {
+        $doc = $this->createDocument(
+            '<root xmlns="http://docbook.org/ns/docbook">
+                <formalpara>
+                    <title>Title</title>
+                    <para>Text</para>
+                </formalpara>
+            </root>'
+        );
+
+        self::assertSame([], new SimparaSniff()->process($doc, '', 'file.xml'));
+    }
 }

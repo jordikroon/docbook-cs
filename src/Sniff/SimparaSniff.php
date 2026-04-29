@@ -111,6 +111,13 @@ final class SimparaSniff extends AbstractSniff
 
         /** @var \DOMElement $para */
         foreach ($paras as $para) {
+            $parent = $para->parentNode;
+            if ($parent instanceof \DOMElement
+                && strtolower($parent->localName ?? '') === 'formalpara'
+            ) {
+                continue;
+            }
+
             if ($this->isSimple($para, $allowed)) {
                 $violations[] = $this->createViolation(
                     $filePath,

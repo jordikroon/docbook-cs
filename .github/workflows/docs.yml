@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "gh-pages"
-
   pull_request:
 
 permissions:
@@ -37,7 +36,7 @@ jobs:
         run: "npm run build"
 
       - name: "Upload pages artifact"
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/gh-pages'
         uses: "actions/upload-pages-artifact@v3"
         with:
           path: "build"
@@ -46,7 +45,7 @@ jobs:
     name: "Deploy"
     runs-on: "ubuntu-latest"
     needs: "build"
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/gh-pages'
 
     environment:
       name: "github-pages"

@@ -157,7 +157,7 @@ final class SimparaSniffTest extends TestCase
     public function itDoesNotFlagParaInFormalparaRegardlessOfCase(): void
     {
         $doc = $this->createDocument(
-            '<root xmlns="http://docbook.org/ns/docbook">
+            '<root>
                 <formalpara>
                     <title>Title</title>
                     <para>Text</para>

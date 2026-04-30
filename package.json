@@ -20,7 +20,7 @@
     "@docusaurus/preset-classic": "3.10.1",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
-    "prism-react-renderer": "^2.3.0",
+    "prism-react-renderer": "^2.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remark-gfm": "^4.0.1"
@@ -30,7 +30,7 @@
     "@docusaurus/tsconfig": "3.10.1",
     "@docusaurus/types": "3.10.1",
     "@types/react": "^19.0.0",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.3"
   },
   "browserslist": {
     "production": [
@@ -44,7 +44,11 @@
       "last 5 safari version"
     ]
   },
+  "overrides": {
+    "serialize-javascript": "^7.0.5",
+    "uuid": "^14.0.0"
+  },
   "engines": {
-    "node": ">=20.0"
+    "node": ">=24.0"
   }
 }

@@ -1,0 +1,109 @@
+---
+title: Writing a custom sniff
+description: How to implement and register your own DocbookCS sniff.
+---
+
+# Writing a custom sniff
+
+Any class that implements `DocbookCS\Sniff\SniffInterface` can be registered as
+a sniff. Extending `AbstractSniff` is the recommended starting point as it
+provides property handling and a `createViolation()` helper.
+
+## Minimal example
+
+```php
+namespace Acme\Sniff;
+
+use DocbookCS\Sniff\AbstractSniff;
+
+final class DeprecatedUlinkSniff extends AbstractSniff
+{
+    public function getCode(): string
+    {
+        return 'Acme.DeprecatedUlink';
+    }
+
+    public function process(\DOMDocument $document, string $content, string $filePath): array
+    {
+        $violations = [];
+
+        foreach ($document->getElementsByTagName('ulink') as $node) {
+            $violations[] = $this->createViolation(
+                $filePath,
+                $node->getLineNo(),
+                '<ulink> is deprecated; use <link xlink:href="..."> instead.',
+            );
+        }
+
+        return $violations;
+    }
+}
+```
+
+## Implementing the interface
+
+### `getCode()`
+
+Return a unique dot-notation string used in reports and configuration:
+
+```php
+public function getCode(): string
+{
+    return 'Vendor.SniffName';
+}
+```
+
+### `process()`
+
+Receives the parsed `DOMDocument`, the raw file content as a string, and the
+file path. Returns a list of `Violation` objects (or an empty array).
+
+Use the DOM for structural checks, and the raw `$content` string when you need
+line/offset information that the DOM does not preserve.
+
+## Adding configurable properties
+
+Call `$this->getProperty()` to read values set via `<property>` in the config:
+
+```php
+public function process(\DOMDocument $document, string $content, string $filePath): array
+{
+    $allowedTags = array_filter(
+        array_map('trim', explode(',', $this->getProperty('allowedTags')))
+    );
+
+    // ...
+}
+```
+
+In `docbookcs.xml`:
+
+```xml
+<sniff class="Acme\Sniff\DeprecatedUlinkSniff">
+    <property name="allowedTags" value="ulink,xref"/>
+</sniff>
+```
+
+## Severity
+
+All sniffs accept a `severity` property that overrides the default violation
+level for that sniff:
+
+```xml
+<sniff class="Acme\Sniff\DeprecatedUlinkSniff">
+    <property name="severity" value="warning"/>
+</sniff>
+```
+
+Accepted values: `error`, `warning`.
+
+## Registering the sniff
+
+Add the fully-qualified class name to `docbookcs.xml`. The class must be
+autoloadable (e.g. via Composer):
+
+```xml
+<sniffs>
+    <sniff class="Acme\Sniff\DeprecatedUlinkSniff"/>
+</sniffs>
+```

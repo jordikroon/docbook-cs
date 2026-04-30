@@ -1,0 +1,97 @@
+---
+sidebar_position: 3
+---
+
+# Configuration
+
+DocbookCS is configured via `docbookcs.xml`. The schema is published at
+`https://jordikroon.github.io/docbook-cs/config.xsd` so any modern XML-aware
+IDE gives you autocomplete and validation automatically.
+
+:::tip IDE integration
+PhpStorm and VS Code (with the Red Hat XML extension) pick up the schema
+automatically when the namespace and `xsi:schemaLocation` declarations are
+present.
+:::
+
+## PHP manual example
+
+The config below reflects the setup used for the PHP manual:
+
+```xml title="docbookcs.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<docbookcs xmlns="https://jordikroon.github.io/docbook-cs/config"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="https://jordikroon.github.io/docbook-cs/config
+                               https://jordikroon.github.io/docbook-cs/config.xsd">
+
+    <project>
+        <directory alias="doc-en">en</directory>
+        <directory>doc-base</directory>
+    </project>
+
+    <sniffs>
+        <sniff class="DocbookCS\Sniff\SimparaSniff" />
+        <sniff class="DocbookCS\Sniff\ExceptionNameSniff" />
+        <sniff class="DocbookCS\Sniff\AttributeOrderSniff" />
+        <sniff class="DocbookCS\Sniff\WhitespaceSniff" />
+    </sniffs>
+
+    <paths>
+        <path>.</path>
+    </paths>
+
+    <entities>
+        <file>contributors.ent</file>
+        <file>extensions.ent</file>
+        <file>language-defs.ent</file>
+        <file>language-snippets.ent</file>
+        <directory>../doc-base/entities/</directory>
+        <file>../doc-base/temp/file-entities.ent</file>
+        <directory>../doc-base/temp/file-entities</directory>
+    </entities>
+
+    <exclude>
+        <pattern>*/wkhtmltox/bits/*</pattern>
+        <pattern>output/*</pattern>
+    </exclude>
+
+</docbookcs>
+```
+
+## Sections
+
+### `<project>`
+
+Optional. Declares the root directory names that are expected to exist as siblings
+of the config file. Each `<directory>` may carry an optional `alias` attribute to
+accept an alternative directory name as the same logical root.
+
+If `<project>` is omitted, DocbookCS infers the project root from the directory
+containing the config file.
+
+### `<sniffs>`
+
+Required. Register sniffs by fully-qualified class name. Each `<sniff>` accepts
+optional `<property>` children:
+
+```xml
+<sniff class="DocbookCS\Sniff\SimparaSniff">
+    <property name="additionalInlineElements" value="productname,trademark"/>
+</sniff>
+```
+
+### `<paths>`
+
+Directories or files to scan, relative to the config file or absolute. Used
+when no paths are passed on the command line.
+
+### `<exclude>`
+
+`fnmatch`-style patterns for paths to skip during scanning.
+
+### `<entities>`
+
+Entity file paths and directories to load before parsing, so the XML parser
+can resolve DocBook entities defined outside the scanned tree. Accepts
+interleaved `<file>` and `<directory>` children in any order.

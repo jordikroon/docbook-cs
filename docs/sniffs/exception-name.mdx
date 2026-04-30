@@ -1,0 +1,43 @@
+---
+title: ExceptionNameSniff
+description: Flags exception class names wrapped in <classname> that should use <exceptionname>.
+---
+
+# ExceptionNameSniff
+
+`DocbookCS.ExceptionName`
+
+Flags class names wrapped in `<classname>` whose base name ends with `Exception`,
+`Error`, or `Throwable`. DocBook provides `<exceptionname>` specifically for
+exception names; using `<classname>` for them is incorrect markup.
+
+## Properties
+
+<PropertyTable
+  properties={[
+    {
+      name: 'severity',
+      type: 'string',
+      default: 'error',
+      description: 'Override the violation severity. Accepted values: error, warning.',
+    },
+  ]}
+/>
+
+## What it catches
+
+```xml title="Wrong"
+<classname>RuntimeException</classname>
+<classname>TypeError</classname>
+```
+
+```xml title="Correct"
+<exceptionname>RuntimeException</exceptionname>
+<exceptionname>TypeError</exceptionname>
+```
+
+Regular class names are not affected:
+
+```xml title="Not flagged"
+<classname>ArrayObject</classname>
+```

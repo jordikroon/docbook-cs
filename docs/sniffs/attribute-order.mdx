@@ -1,0 +1,37 @@
+---
+title: AttributeOrderSniff
+description: Ensures xml:id appears before xmlns attributes on the same element.
+---
+
+# AttributeOrderSniff
+
+`DocbookCS.AttributeOrder`
+
+Ensures that when an element carries both `xml:id` and an `xmlns` (or `xmlns:*`)
+attribute, `xml:id` appears first. This is the convention in the PHP manual:
+identity attributes precede namespace declarations.
+
+## Properties
+
+<PropertyTable
+  properties={[
+    {
+      name: 'severity',
+      type: 'string',
+      default: 'error',
+      description: 'Override the violation severity. Accepted values: error, warning.',
+    },
+  ]}
+/>
+
+## What it catches
+
+```xml title="Wrong"
+<book xmlns="..." xml:id="manual">
+```
+
+```xml title="Correct"
+<book xml:id="manual" xmlns="...">
+```
+
+Elements that do not have both `xml:id` and an `xmlns` attribute are not checked.

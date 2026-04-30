@@ -1,0 +1,58 @@
+---
+title: SimparaSniff
+description: Flags <para> elements that contain only inline content and should be <simpara>.
+---
+
+# SimparaSniff
+
+`DocbookCS.Simpara`
+
+Flags `<para>` elements whose children are all inline elements. DocBook defines
+`<simpara>` for paragraphs that contain only inline content; `<para>` is for
+paragraphs that may contain block-level children. Using `<para>` when `<simpara>`
+is sufficient adds unnecessary markup weight.
+
+A `<para>` directly inside `<formalpara>` is always skipped.
+
+## Properties
+
+<PropertyTable
+  properties={[
+    {
+      name: 'additionalInlineElements',
+      type: 'string',
+      default: '',
+      description: 'Comma-separated list of extra element names to treat as inline. Add any project-specific inline elements that are not in the built-in list.',
+    },
+    {
+      name: 'severity',
+      type: 'string',
+      default: 'error',
+      description: 'Override the violation severity. Accepted values: error, warning.',
+    },
+  ]}
+/>
+
+## Example configuration
+
+```xml title="docbookcs.xml"
+<sniff class="DocbookCS\Sniff\SimparaSniff">
+    <property name="additionalInlineElements" value="productname,trademark"/>
+</sniff>
+```
+
+## What it catches
+
+```xml title="Wrong - only inline content"
+<para>See <function>array_map</function> for details.</para>
+```
+
+```xml title="Correct"
+<simpara>See <function>array_map</function> for details.</simpara>
+```
+
+```xml title="Not flagged - has a block-level child"
+<para>
+    <programlisting role="php">echo 'hello';</programlisting>
+</para>
+```

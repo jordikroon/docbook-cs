@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="https://jordikroon.github.io/docbook-cs/config"
+           xmlns="https://jordikroon.github.io/docbook-cs/config"
+           elementFormDefault="qualified">
+
+  <xs:element name="docbookcs">
+    <xs:complexType>
+      <xs:all>
+
+        <!-- Optional: declare project root directories -->
+        <xs:element name="project" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="directory" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:simpleContent>
+                    <xs:extension base="xs:string">
+                      <xs:attribute name="alias" type="xs:string"/>
+                    </xs:extension>
+                  </xs:simpleContent>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <!-- Required: sniffs to run -->
+        <xs:element name="sniffs">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="sniff" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="property" minOccurs="0" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:attribute name="name"  type="xs:string" use="required"/>
+                        <xs:attribute name="value" type="xs:string" use="required"/>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="class" type="xs:string" use="required"/>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <!-- Optional: paths to scan (overridden by CLI arguments) -->
+        <xs:element name="paths" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="path" type="xs:string" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <!-- Optional: fnmatch patterns for paths to exclude -->
+        <xs:element name="exclude" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="pattern" type="xs:string" maxOccurs="unbounded"/>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <!-- Optional: entity files and directories to pre-load -->
+        <xs:element name="entities" minOccurs="0">
+          <xs:complexType>
+            <xs:choice maxOccurs="unbounded">
+              <xs:element name="file"      type="xs:string"/>
+              <xs:element name="directory" type="xs:string"/>
+            </xs:choice>
+          </xs:complexType>
+        </xs:element>
+
+      </xs:all>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

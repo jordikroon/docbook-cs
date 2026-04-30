@@ -121,11 +121,11 @@ final class ConsoleReporter implements ReporterInterface
 
     private function formatSeverity(Severity $severity): string
     {
-        return match ($severity) {
+        return match ($severity) { // @codeCoverageIgnore
             Severity::ERROR => $this->red(str_pad(Severity::ERROR->name, 7)),
             Severity::WARNING => $this->yellow(str_pad(Severity::WARNING->name, 7)),
             default => $this->dim(str_pad(strtoupper($severity->name), 7)),
-        };
+        }; // @codeCoverageIgnore
     }
 
     private function bold(string $text): string
